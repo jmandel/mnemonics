@@ -1,14 +1,5 @@
 # major-system
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure library that implements the [mneomic major
+system](http://en.wikipedia.org/wiki/Mnemonic_major_system)
 
-## Usage
-
-FIXME
-
-## License
-
-Copyright © 2014 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
