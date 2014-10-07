@@ -46,9 +46,10 @@
 (defn words-for-pattern [number-groups]
   (map words-by-number number-groups))
 
+(defservantfn loaded? [] (pos? (count words-by-number)))
+
 (defservantfn mnemonics [pin {:keys [ndrop ntake] :or {ndrop 0 ntake 10}}]
   (let [p (reader/read-string pin)
-        _ (println "Read in" p "against" (count words-by-number))
         patterns (apply-all-breaks p)
         results (->> patterns
                      (map words-for-pattern)
@@ -114,6 +115,11 @@
     (will-mount [_]
       (go-loop [] 
                (<! (timeout 500))
+               (let [done (<! (servant/servant-thread servant-channel servant/standard-message loaded?))]
+               (om/update! app :loaded done)
+               (if-not done (recur))))
+      (go-loop [] 
+               (<! (timeout 500))
                (om/transact! app :ticks inc)
                (recur))
       (go-loop [] 
@@ -124,8 +130,7 @@
                      result-channel (servant/servant-thread
                                      servant-channel
                                      servant/standard-message
-                                     mnemonics input)
-                     ]
+                                     mnemonics input)]
                  (om/update! app :input input)
                  (om/update! app :ticks 0)
                  (om/update! app :working true)
@@ -136,7 +141,6 @@
     om/IRender
     (render [_]
       (dom/div #js {:id "classes"}
-               (dom/div nil "Make a mnemonic like pie!")
                (dom/input  
                 #js {:type "text"
                      :value  nil
@@ -144,9 +148,8 @@
                      :placeholder "123-456"
                      :autoFocus true
                      :onChange (fn [e] (put! input-channel (.. e -target -value)))}) 
-               (dom/h3 nil (if (and (:working app) (pos? (:ticks app)))
-                             (apply str "Working" (take (:ticks app) (repeat ".")))))
-               (dom/div nil (if (:input app)
+               (dom/h3 nil (if-not (:loaded app) "Loading dictionary..." "Loaded!"))
+               (dom/div nil (if-not (clojure.string/blank? (:input app))
                               (str "Looking for " (:input app))))
                (apply dom/div nil 
                       (let [mns (:mnemonics app)
