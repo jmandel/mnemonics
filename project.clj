@@ -3,12 +3,25 @@
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :plugins [[lein-cljsbuild "1.0.3"]]
+  :plugins [[lein-cljsbuild "1.0.3"]
+            [lein-figwheel "0.1.4-SNAPSHOT"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 ;[org.clojure/math.combinatorics "0.0.8"]
-                 [org.clojure/clojurescript "0.0-2356"]]
+                 [org.clojure/math.combinatorics "0.0.8"]
+                 [org.clojure/clojurescript "0.0-2356"]
+                 [figwheel "0.1.4-SNAPSHOT"]
+                 [om "0.7.3"]
+                 [servant "0.1.3"]
+                 [cljs-http "0.1.16"]]
   :cljsbuild {
-    :builds [{
+    :builds [
+            { :id "major-web" 
+                :source-paths ["src"]
+                :compiler { :output-to "resources/public/js/compiled/major-web.js"
+                            :output-dir "resources/public/js/compiled/out"
+                            :externs ["resources/public/js/externs/jquery-1.9.js"]
+                            :optimizations :none
+                            :source-map true } }
+              {
         :source-paths ["src"]
         :compiler {
           :optimizations :simple

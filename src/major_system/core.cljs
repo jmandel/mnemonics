@@ -1,7 +1,9 @@
 (ns major-system.core
   (:require [clojure.string :as str]
-[major-system.combinatorics :as combo]
-[cljs.nodejs :as node]))
+            [major-system.combinatorics :as combo]
+;            [major-system/words-by-number :refer [dictionary]]
+            [cljs.nodejs :as node]
+            [cljs.reader :refer [read-string]]))
 
 (node/enable-util-print!)
 
@@ -27,16 +29,25 @@
 (defn add-word [corpus word]
   (update-in corpus [(:numbers word)] (fnil conj []) (:word word)))
 
-(defn load-dict []
-  (let [fs (node/require "fs")
-        dict (str/split (.readFileSync fs "cmudict/cmudict.0.7a.100") #"\n")]
-    (->> dict
-         (map as-entry)
-         (filter identity)
-         (map with-numbers)
-         (reduce add-word {}))))
+;(defn load-dict []
+;  (let [fs (node/require "fs")
+;       dict (str/split (.readFileSync fs "cmudict/cmudict.0.7a.100") #"\n")]
+;    (->> dict
+;        (map as-entry)
+;        (filter identity)
+;       (map with-numbers)
+;      (reduce add-word {}))))
 
-(def words-by-number (load-dict))
+ (defn load-dict []
+   (let [fs (node/require "fs")
+        dict (.toString (.readFileSync fs "words-by-number.edn"))
+        _ (println "Dict importing from size" (count dict))
+        ret (read-string dict)
+        _ (println "Dict imported" (count ret))]
+      ret))
+;(def words-by-number dictionary) 
+(def words-by-number (load-dict)) 
+(println (count words-by-number))
 
 (defn all-breaks [nums]
   (let [n (count nums)
