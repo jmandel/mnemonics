@@ -141,6 +141,7 @@
     om/IRender
     (render [_]
       (dom/div #js {:id "classes"}
+              (if (:loaded app)
                (dom/input  
                 #js {:type "text"
                      :value  nil
@@ -148,13 +149,13 @@
                      :placeholder "123-456"
                      :autoFocus true
                      :onChange (fn [e] (put! input-channel (.. e -target -value)))}) 
-               (dom/h3 nil (if-not (:loaded app) "Loading dictionary..." "Loaded!"))
+               (dom/h3 nil "Loading dictionary..."))
                (dom/div nil (if-not (clojure.string/blank? (:input app))
                               (str "Looking for " (:input app))))
-               (apply dom/div nil 
+               (apply dom/div #js {:id "answers"} 
                       (let [mns (:mnemonics app)
                             parts (map #(om/build mnemonic-group app {:state {:parts %}}) mns )]
-                        (interpose (dom/h1 nil "or...") parts) ))))))
+                        (interpose (dom/h1 nil (dom/hr nil) "or...") parts) ))))))
 
 (defonce just-at-initial-launch (on-reload))
 
