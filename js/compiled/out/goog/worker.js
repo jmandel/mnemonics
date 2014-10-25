@@ -1,1 +1,0 @@
-/home/jmandel/puzzle/major-system/resources/public/js/worker.js
