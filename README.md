@@ -1,7 +1,13 @@
-# major-system
+# Mnemonic Major System
 
-A Clojure library that implements the [mneomic major
-system](http://en.wikipedia.org/wiki/Mnemonic_major_system)
+## See it in action
+[http://joshuamandel.com/mnemonics](http://joshuamandel.com/mnemonics)
 
-+ Clojurescript app that works client-side
+## Develop it
 
+* Install leinengen
+* `git clone https://github.com/jmandel/mnemonics && cd mnemonics`
+* `make wordsfile`
+* dev: `lein figwheel`
+* prod: `make build-release`
+```
