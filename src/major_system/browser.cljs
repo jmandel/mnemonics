@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [major-system.combinatorics :as combo]
             [goog.events :as events]
-            [figwheel.client :as fw :include-macros true]
             [cljs.reader :as reader]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true] 
@@ -19,7 +18,6 @@
 (enable-console-print!)
 
 (def worker-count 1)
-(def worker-script "/js/worker.js")
 
 (if (servant/webworker?)
   (take! (http/get "/words-by-number.edn")
@@ -78,7 +76,7 @@
     (worker/bootstrap) 
     (do 
       (println "reloaded x2" (servant/webworker?))
-      (def servant-channel (servant/spawn-servants worker-count worker-script))
+      (def servant-channel (servant/spawn-servants worker-count (.-workerUrl js/window)))
       (om/root mnemonics-view
                {:loaded false :ticks 0 :input ""} 
                {:target (.getElementById js/document "main-area")}))))
@@ -159,5 +157,3 @@
 
 (defonce just-at-initial-launch (on-reload))
 
-(fw/watch-and-reload
- :jsload-callback (fn [] (on-reload)))

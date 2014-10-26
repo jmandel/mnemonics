@@ -15,16 +15,21 @@
   :cljsbuild {
     :builds [
             { :id "major-web" 
-                :source-paths ["src"]
+                :source-paths ["src/major_system", "src/figwheel"]
                 :compiler { :output-to "resources/public/js/compiled/major-web.js"
                             :output-dir "resources/public/js/compiled/out"
                             :externs ["resources/public/js/externs/jquery-1.9.js"]
                             :optimizations :none
                             :source-map true } }
-              {
-        :source-paths ["src"]
-        :compiler {
-          :optimizations :simple
-          :target :nodejs
-          }}]}
+               {:id "release"
+              :source-paths ["src/major_system"]
+              :compiler {
+                :output-to "resources/public/major_system_prod.js"
+                :output-dir "resources/public/prod-out"
+                :optimizations :whitespace
+                :pretty-print false
+                :preamble ["react/react.min.js"]
+                :externs ["react/externs/react.js"]
+                :source-map "resources/public/major_system_prod.js.map"}}
+              ]}
   )
