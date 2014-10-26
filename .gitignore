@@ -8,3 +8,9 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 *.swp
+resources/public/js/compiled/
+resources/public/major_system_prod.js
+resources/public/major_system_prod.js.map
+resources/public/prod-out/
+vendor/
+cmudict.0.7a

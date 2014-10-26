@@ -13,23 +13,26 @@
                  [servant "0.1.3"]
                  [cljs-http "0.1.16"]]
   :cljsbuild {
-    :builds [
-            { :id "major-web" 
-                :source-paths ["src/major_system", "src/figwheel"]
-                :compiler { :output-to "resources/public/js/compiled/major-web.js"
-                            :output-dir "resources/public/js/compiled/out"
-                            :externs ["resources/public/js/externs/jquery-1.9.js"]
-                            :optimizations :none
-                            :source-map true } }
-               {:id "release"
-              :source-paths ["src/major_system"]
-              :compiler {
-                :output-to "resources/public/major_system_prod.js"
-                :output-dir "resources/public/prod-out"
-                :optimizations :whitespace
-                :pretty-print false
-                :preamble ["react/react.min.js"]
-                :externs ["react/externs/react.js"]
-                :source-map "resources/public/major_system_prod.js.map"}}
-              ]}
+              :builds [
+                       { :id "major-web" 
+                        :source-paths ["src/major_system", "src/figwheel"]
+                        :compiler {:output-to "resources/public/js/compiled/major-web.js"
+                                   :output-dir "resources/public/js/compiled/out"
+                                   :externs ["resources/public/js/externs/jquery-1.9.js"]
+                                   :optimizations :none
+                                   :source-map true } }
+                       {:id "release"
+                        :source-paths ["src/major_system"]
+                        :compiler {
+                                   :output-to "resources/public/major_system_prod.js"
+                                   :output-dir "resources/public/prod-out"
+                                   :optimizations :advanced
+                                   :pretty-print false
+                                   :preamble ["react/react.min.js"]
+                                   :externs ["react/externs/react.js", "externs.js"]
+                                   :source-map "resources/public/major_system_prod.js.map"}}
+                       ]}
+  :figwheel {
+             :css-dirs ["resources/public/css"]
+             }
   )
