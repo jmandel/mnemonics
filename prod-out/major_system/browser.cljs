@@ -56,22 +56,10 @@
                      (take ntake))]
     (time (pr-str (doall results)))))
 
-(defn shortest-mnemonics [p]
-  (let [ms (mnemonics p)]
-    (first  (partition-by count ms))))
-
-(defn random-mnemonic [p]
-  (let [ms (mnemonics p)]
-    (for [g (partition-by count ms)]
-      (map rand-nth (rand-nth g)))))
-
-(defn tostr [ms]
-  (interpose
-   "\nor...\n\n"
-   (for [m ms]
-     (apply println-str (interpose "+ \n" m)))))
+(declare mnemonics-view)
 
 (defn on-reload []
+  (println "Reload!")
   (if (servant/webworker?)
     (worker/bootstrap) 
     (do 
@@ -141,15 +129,16 @@
       (dom/div #js {:id "classes"}
               (if (:loaded app)
                (dom/input  
-                #js {:type "text"
+                #js {:type "number"
                      :value  nil
                      :maxLength "20"
                      :placeholder "123-456"
                      :autoFocus true
                      :onChange (fn [e] (put! input-channel (.. e -target -value)))}) 
                (dom/h3 nil "Loading dictionary..."))
-               (dom/div nil (if-not (clojure.string/blank? (:input app))
-                              (str "Looking for " (:input app))))
+
+               (dom/h3 nil (if (and (:working app) (pos? (:ticks app)))
+                          (apply str "Working on " (:input app) (take (:ticks app) (repeat ".")))))
                (apply dom/div #js {:id "answers"} 
                       (let [mns (:mnemonics app)
                             parts (map #(om/build mnemonic-group app {:state {:parts %}}) mns )]
