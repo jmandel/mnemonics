@@ -57,3 +57,8 @@ input {
  width: 100%;
 }
 
+#footer a {
+ color: #333;
+ font-weight: narrow;
+}
+
