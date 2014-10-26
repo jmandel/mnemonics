@@ -26,7 +26,7 @@ goog.require('cljs_http.client');
 cljs.core.enable_console_print_BANG_.call(null);
 major_system.browser.worker_count = (1);
 if(servant.core.webworker_QMARK_.call(null))
-{cljs.core.async.take_BANG_.call(null,cljs_http.client.get.call(null,"/words-by-number.edn"),(function (res){var res__$1 = cljs.reader.read_string.call(null,new cljs.core.Keyword(null,"body","body",-2049205669).cljs$core$IFn$_invoke$arity$1(res));major_system.browser.words_by_number = res__$1;
+{cljs.core.async.take_BANG_.call(null,cljs_http.client.get.call(null,"../words-by-number.edn"),(function (res){var res__$1 = cljs.reader.read_string.call(null,new cljs.core.Keyword(null,"body","body",-2049205669).cljs$core$IFn$_invoke$arity$1(res));major_system.browser.words_by_number = res__$1;
 }));
 } else
 {}

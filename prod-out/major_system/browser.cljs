@@ -20,7 +20,7 @@
 (def worker-count 1)
 
 (if (servant/webworker?)
-  (take! (http/get "/words-by-number.edn")
+  (take! (http/get "../words-by-number.edn")
          (fn [res] (let [res (reader/read-string (:body res))]
                     (def words-by-number res)))))
 
