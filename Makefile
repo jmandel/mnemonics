@@ -8,3 +8,17 @@ dictfile: dictdir
 
 wordsfile: dictfile
 	lein run -m major-system.prepare > resources/public/words-by-number.edn
+
+build-release:
+	lein cljsbuild once release
+
+release: build-release
+	mkdir -p /tmp/public-major/js
+	cp -r resources/public/css /tmp/public-major
+	cp -r resources/public/index.html /tmp/public-major
+	cp -r resources/public/js/worker-prod.js /tmp/public-major/js
+	cp -r resources/public/major_system_prod.js* /tmp/public-major
+	cp -r resources/public/prod-out /tmp/public-major
+	git checkout gh-pages
+	cp -r /tmp/public-major/* .
+	rm -rf /tmp/public-major
