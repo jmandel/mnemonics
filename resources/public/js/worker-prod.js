@@ -6,6 +6,6 @@ this.CLOSURE_IMPORT_SCRIPT = (function(global) {
     return true;
   };
 })(this);
-importScripts('http://fb.me/react-0.11.1.js');
+importScripts('https://fb.me/react-0.11.1.js');
 importScripts('../major_system_prod.js');
 console.log('in worker.js');
