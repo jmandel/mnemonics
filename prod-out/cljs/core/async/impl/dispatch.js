@@ -10,14 +10,14 @@ cljs.core.async.impl.dispatch.queued_QMARK_ = false;
 cljs.core.async.impl.dispatch.TASK_BATCH_SIZE = (1024);
 cljs.core.async.impl.dispatch.process_messages = (function process_messages(){cljs.core.async.impl.dispatch.running_QMARK_ = true;
 cljs.core.async.impl.dispatch.queued_QMARK_ = false;
-var count_26212 = (0);while(true){
-var m_26213 = cljs.core.async.impl.dispatch.tasks.pop();if((m_26213 == null))
+var count_27032 = (0);while(true){
+var m_27033 = cljs.core.async.impl.dispatch.tasks.pop();if((m_27033 == null))
 {} else
-{(m_26213.cljs$core$IFn$_invoke$arity$0 ? m_26213.cljs$core$IFn$_invoke$arity$0() : m_26213.call(null));
-if((count_26212 < cljs.core.async.impl.dispatch.TASK_BATCH_SIZE))
+{(m_27033.cljs$core$IFn$_invoke$arity$0 ? m_27033.cljs$core$IFn$_invoke$arity$0() : m_27033.call(null));
+if((count_27032 < cljs.core.async.impl.dispatch.TASK_BATCH_SIZE))
 {{
-var G__26214 = (count_26212 + (1));
-count_26212 = G__26214;
+var G__27034 = (count_27032 + (1));
+count_27032 = G__27034;
 continue;
 }
 } else
@@ -51,9 +51,9 @@ if(typeof MessageChannel !== 'undefined')
 {return cljs.core.async.impl.dispatch.message_channel.port2.postMessage((0));
 } else
 {if(typeof setImmediate !== 'undefined')
-{var G__26218 = cljs.core.async.impl.dispatch.process_messages;return setImmediate(G__26218);
+{var G__27038 = cljs.core.async.impl.dispatch.process_messages;return setImmediate(G__27038);
 } else
-{var G__26219 = cljs.core.async.impl.dispatch.process_messages;var G__26220 = (0);return setTimeout(G__26219,G__26220);
+{var G__27039 = cljs.core.async.impl.dispatch.process_messages;var G__27040 = (0);return setTimeout(G__27039,G__27040);
 
 }
 }
@@ -62,5 +62,5 @@ if(typeof MessageChannel !== 'undefined')
 cljs.core.async.impl.dispatch.run = (function run(f){cljs.core.async.impl.dispatch.tasks.unbounded_unshift(f);
 return cljs.core.async.impl.dispatch.queue_dispatcher();
 });
-cljs.core.async.impl.dispatch.queue_delay = (function queue_delay(f,delay){var G__26223 = f;var G__26224 = delay;return setTimeout(G__26223,G__26224);
+cljs.core.async.impl.dispatch.queue_delay = (function queue_delay(f,delay){var G__27043 = f;var G__27044 = delay;return setTimeout(G__27043,G__27044);
 });
