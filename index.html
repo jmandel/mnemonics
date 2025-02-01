@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mnemonic Generator Testbed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- You might load a whimsical Google Font if available; here we use a generic serif as fallback -->
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Alice&display=swap" rel="stylesheet">
+  <style>
+    /* Lewis Carroll-inspired styling: whimsical, slightly old-fashioned with playful colors */
+    body {
+      background: #fdf6e3; /* light parchment-like background */
+      color: #333;
+      font-family: 'Alice', serif, Georgia, "Times New Roman", Times, serif;
+      margin: 0;
+      padding: 1rem;
+      line-height: 1.4;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    h1 {
+      text-align: center;
+      font-size: 3rem;
+      margin-bottom: 0.25rem;
+      color: #5d4037;
+    }
+    .input-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+    .input-group > div {
+      flex: 1 1 250px;
+      display: flex;
+      flex-direction: column;
+    }
+    .input-group label {
+      font-size: 1.1rem;
+      margin-bottom: 0.3rem;
+      color: #3e2723;
+    }
+    .input-group input,
+    .input-group button {
+      font-size: 1rem;
+      padding: 0.6rem;
+      border: 2px solid #3e2723;
+      background: #fff;
+      color: #3e2723;
+      border-radius: 4px;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #results {
+      /* Instead of a fixed box, the page just gets longer */
+      margin-top: 1rem;
+    }
+    .result {
+      margin-bottom: 1.5rem;
+      padding: 0.75rem;
+      background: #fff;
+      border: 2px dashed #a1887f;
+      border-radius: 8px;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
+    .result::before {
+      content: "";
+      display: block;
+      margin-bottom: 0.75rem;
+    }
+    .segment {
+      margin-bottom: 0.5rem;
+      padding: 0.25rem;
+      border-left: 3px solid #8d6e63;
+      padding-left: 0.5rem;
+      font-style: italic;
+    }
+    /* Explanation block styling (placed below results) */
+    .explanation {
+      border-top: 3px double #3e2723;
+      padding-top: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #4e342e;
+    }
+    .explanation h2 {
+      text-align: center;
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+      color: #5d4037;
+    }
+    .mapping-table {
+      width: 100%;
+      max-width: 600px;
+      margin: 0.5rem auto;
+      border-collapse: collapse;
+      font-size: 1rem;
+    }
+    .mapping-table th, .mapping-table td {
+      border: 1px solid #5d4037;
+      padding: 0.5rem;
+      text-align: center;
+      background: #fce4ec;
+    }
+    .mapping-table th {
+      background: #d1c4e9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Interactive Area -->
+    <h1>Mnemonic Generator</h1>
+    <div class="input-group">
+      <div>
+        <label for="numericInput">Numeric String</label>
+        <input AUTOFOCUS type="text" id="numericInput" placeholder="Enter numeric string..." >
+      </div>
+    </div>
+    <div id="results"></div>
+    
+    <!-- Explanation Area (below results) -->
+    <div class="explanation">
+      <h2>About the Major System</h2>
+      <p>
+        The Major System is a mnemonic technique that converts numbers into consonant sounds.
+        Vowels and additional letters are then added to form memorable words. This system has been used since the time of Lewis Carroll and others to help remember long strings of digits.
+      </p>
+      <p>The standard mapping used here is:</p>
+      <table class="mapping-table">
+        <thead>
+          <tr>
+            <th>Digit</th>
+            <th>Consonant Sounds</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>0</td><td>S, Z</td></tr>
+          <tr><td>1</td><td>T, D, TH, DH</td></tr>
+          <tr><td>2</td><td>N</td></tr>
+          <tr><td>3</td><td>M</td></tr>
+          <tr><td>4</td><td>R</td></tr>
+          <tr><td>5</td><td>L</td></tr>
+          <tr><td>6</td><td>CH, JH, SH, ZH</td></tr>
+          <tr><td>7</td><td>K, G, NG</td></tr>
+          <tr><td>8</td><td>F, V</td></tr>
+          <tr><td>9</td><td>P, B</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The generator examines every possible contiguous partition of your numeric string,
+        yielding only those partitions for which each segment maps to a list of words using a preprocessed dictionary.
+      </p>
+    </div>
+  </div>
+  
+  <script type="module">
+    // --- Mnemonic Generator Implementation ---
+    // This implementation loads a preprocessed JSON dictionary (cmudict.json)
+    // and uses an asynchronous generator to stream valid partitions.
+    
+    async function loadDictionary() {
+      const response = await fetch("cmudict.json");
+      const data = await response.json();
+      return data;
+    }
+    
+    /**
+     * generatePartitions(numStr, s)
+     * A generator that yields all partitions of numStr with exactly s splits.
+     * Each partition is represented as an array of substrings.
+     */
+    function* generatePartitions(numStr, s) {
+      const n = numStr.length;
+      function* helper(start, count, combination) {
+        if (count === 0) {
+          yield combination;
+          return;
+        }
+        for (let i = start; i <= n - count; i++) {
+          yield* helper(i + 1, count - 1, combination.concat(i));
+        }
+      }
+      for (const combination of helper(1, s, [])) {
+        const parts = [];
+        let prev = 0;
+        for (const index of combination) {
+          parts.push(numStr.substring(prev, index));
+          prev = index;
+        }
+        parts.push(numStr.substring(prev));
+        yield parts;
+      }
+    }
+    
+    /**
+     * asyncMnemonicGenerator(numStr, dict, config)
+     * An asynchronous generator that yields valid partitions in order.
+     * Each yielded partition is an array of objects { digits, words }.
+     * Config parameters:
+     *   timeSlice: maximum ms to process per chunk (default 2ms)
+     *   maxYields: maximum iterations per frame (default 5)
+     */
+    async function* asyncMnemonicGenerator(numStr, dict, config = { timeSlice: 2, maxYields: 5 }) {
+      const n = numStr.length;
+      let globalCount = 0;
+      // Loop over splits from 0 to n-1 so that partitions with fewer splits come first.
+      for (let s = 0; s <= n - 1; s++) {
+        for (const parts of generatePartitions(numStr, s)) {
+          let valid = true;
+          const segmentObjects = [];
+          for (const seg of parts) {
+            if (dict[seg]) {
+              segmentObjects.push({ digits: seg, words: dict[seg] });
+            } else {
+              valid = false;
+              break;
+            }
+          }
+          if (valid) {
+            yield segmentObjects;
+          }
+          globalCount++;
+          if (globalCount % config.maxYields === 0) {
+            await new Promise(requestAnimationFrame);
+          }
+        }
+      }
+    }
+    
+    // Simple debounce helper.
+    function debounce(func, delay) {
+      let timerId;
+      return function(...args) {
+        clearTimeout(timerId);
+        timerId = setTimeout(() => func.apply(this, args), delay);
+      };
+    }
+    
+    // calibrateConfig: Measure frame times and compute config values.
+    async function calibrateConfig() {
+      const iterations = 10;
+      let times = [];
+      let last = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        await new Promise(requestAnimationFrame);
+        const now = performance.now();
+        times.push(now - last);
+        last = now;
+      }
+      const avgFrameTime = times.reduce((a, b) => a + b, 0) / times.length;
+      const timeSlice = Math.max(1, Math.floor(avgFrameTime * 0.1)); // 10% of average frame time
+      const maxYields = 5; // Target 5 iterations per frame.
+      return { timeSlice, maxYields };
+    }
+    
+    // UI Code
+    document.addEventListener("DOMContentLoaded", async () => {
+      const numericInput = document.getElementById("numericInput");
+      const resultsDiv = document.getElementById("results");
+    
+      const dict = await loadDictionary();
+      const config = await calibrateConfig();
+      console.log("Calibrated config:", config);
+    
+      // Update input from URL parameter.
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has("n")) numericInput.value = urlParams.get("n");
+    
+      let asyncGenerator = null;
+      let resultsLoaded = 0;
+    
+      function updateUrl() {
+        const state = {
+          n: numericInput.value.trim()
+        };
+        const newUrl = window.location.pathname + "?" + new URLSearchParams(state).toString();
+        history.replaceState(null, "", newUrl);
+      }
+    
+      function clearResults() {
+        resultsDiv.innerHTML = "";
+        resultsLoaded = 0;
+      }
+    
+      // appendResult: Render each partition; for each segment show "<digits>: word1, word2"
+      function appendResult(partition) {
+        const container = document.createElement("div");
+        container.className = "result";
+        partition.forEach(segmentObj => {
+          const segDiv = document.createElement("div");
+          segDiv.className = "segment";
+          segDiv.textContent = `${segmentObj.digits}: ${segmentObj.words.join(", ")}`;
+          container.appendChild(segDiv);
+        });
+        resultsDiv.appendChild(container);
+      }
+    
+      async function loadMore() {
+        if (!asyncGenerator) return;
+        // Load all results (effectively infinite)
+        while (true) {
+          const { value, done } = await asyncGenerator.next();
+          if (done) break;
+          appendResult(value);
+          resultsLoaded++;
+        }
+      }
+    
+      const regenerate = debounce(async () => {
+        clearResults();
+        updateUrl();
+        const numStr = numericInput.value.trim();
+        if (!numStr) return;
+        asyncGenerator = asyncMnemonicGenerator(numStr, dict, config);
+        resultsLoaded = 0;
+        await loadMore();
+      }, 100);
+    
+      numericInput.addEventListener("input", regenerate);
+    
+      if (numericInput.value.trim()) {
+        updateUrl();
+        asyncGenerator = asyncMnemonicGenerator(numericInput.value.trim(), dict, config);
+        loadMore();
+      }
+    
+      window.addEventListener("scroll", () => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 20) {
+          loadMore();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+
