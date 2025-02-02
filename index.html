@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <title>Mnemonic Generator Testbed</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- You might load a whimsical Google Font if available; here we use a generic serif as fallback -->
+  <!-- Use a whimsical font inspired by Lewis Carroll -->
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Alice&display=swap" rel="stylesheet">
   <style>
-    /* Lewis Carroll-inspired styling: whimsical, slightly old-fashioned with playful colors */
+    /* Lewis Carroll-inspired, responsive styling */
     body {
-      background: #fdf6e3; /* light parchment-like background */
+      background: #fdf6e3;
       color: #333;
       font-family: 'Alice', serif, Georgia, "Times New Roman", Times, serif;
       margin: 0;
@@ -46,8 +46,7 @@
       margin-bottom: 0.3rem;
       color: #3e2723;
     }
-    .input-group input,
-    .input-group button {
+    .input-group input {
       font-size: 1rem;
       padding: 0.6rem;
       border: 2px solid #3e2723;
@@ -58,31 +57,44 @@
       width: 100%;
       box-sizing: border-box;
     }
+    /* Results: page grows longer */
     #results {
-      /* Instead of a fixed box, the page just gets longer */
       margin-top: 1rem;
     }
+    /* Each partition container uses flexbox in column direction */
     .result {
+      display: flex;
+      flex-direction: column;
       margin-bottom: 1.5rem;
       padding: 0.75rem;
       background: #fff;
       border: 2px dashed #a1887f;
       border-radius: 8px;
       box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+      overflow-wrap: break-word;
     }
     .result::before {
       content: "";
       display: block;
+      border-top: 2px solid #d7ccc8;
       margin-bottom: 0.75rem;
     }
+    /* Each segment appears as a full-width row */
     .segment {
-      margin-bottom: 0.5rem;
+      width: 100%;
       padding: 0.25rem;
-      border-left: 3px solid #8d6e63;
-      padding-left: 0.5rem;
       font-style: italic;
     }
-    /* Explanation block styling (placed below results) */
+    /* The plus sign appears on its own line, centered */
+    .plus {
+      width: 100%;
+      text-align: center;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #8d6e63;
+      margin: 0.5rem 0;
+    }
+    /* Explanation area styling */
     .explanation {
       border-top: 3px double #3e2723;
       padding-top: 1rem;
@@ -121,19 +133,25 @@
     <div class="input-group">
       <div>
         <label for="numericInput">Numeric String</label>
-        <input AUTOFOCUS type="text" id="numericInput" placeholder="Enter numeric string..." >
+        <input autofocus type="text" id="numericInput" placeholder="Enter numeric string..." value="4202">
+      </div>
+      <div>
+        <label for="minPercentileInput">Min Frequency Percentile</label>
+        <input type="range" id="minPercentileInput" min="0" max="100" value="25">
+        <span id="minPercentileDisplay">25%</span>
       </div>
     </div>
     <div id="results"></div>
     
-    <!-- Explanation Area (below results) -->
+    <!-- Explanation Area -->
     <div class="explanation">
       <h2>About the Major System</h2>
       <p>
         The Major System is a mnemonic technique that converts numbers into consonant sounds.
-        Vowels and additional letters are then added to form memorable words. This system has been used since the time of Lewis Carroll and others to help remember long strings of digits.
+        Vowels and fillers are then added to form memorable words. Popularized by Lewis Carroll,
+        this system helps in remembering long strings of digits.
       </p>
-      <p>The standard mapping used here is:</p>
+      <p>The standard mapping is as follows:</p>
       <table class="mapping-table">
         <thead>
           <tr>
@@ -156,7 +174,9 @@
       </table>
       <p>
         The generator examines every possible contiguous partition of your numeric string,
-        yielding only those partitions for which each segment maps to a list of words using a preprocessed dictionary.
+        yielding only those partitions for which each segment maps to a list of words from a preprocessed dictionary.
+        Use the slider above to filter out low-frequency words (based on frequency percentiles). Only words whose frequency is above the chosen percentile are shown;
+        words in the top 10% of the filtered set are rendered in bold.
       </p>
     </div>
   </div>
@@ -164,7 +184,7 @@
   <script type="module">
     // --- Mnemonic Generator Implementation ---
     // This implementation loads a preprocessed JSON dictionary (cmudict.json)
-    // and uses an asynchronous generator to stream valid partitions.
+    // and streams valid partitions using an asynchronous generator.
     
     async function loadDictionary() {
       const response = await fetch("cmudict.json");
@@ -172,10 +192,28 @@
       return data;
     }
     
+    // Compute a global sorted array of frequencies from the dictionary.
+    async function computeGlobalFrequencies(dict) {
+      let freqs = [];
+      for (const key in dict) {
+        for (const entry of dict[key]) {
+          freqs.push(entry.freq);
+        }
+      }
+      freqs.sort((a, b) => a - b); // ascending order
+      return freqs;
+    }
+    
+    // Get the value at the given percentile (0-100) from a sorted array.
+    function getPercentileValue(sortedArray, percentile) {
+      const index = Math.floor((percentile / 100) * (sortedArray.length - 1));
+      return sortedArray[index];
+    }
+    
     /**
      * generatePartitions(numStr, s)
-     * A generator that yields all partitions of numStr with exactly s splits.
-     * Each partition is represented as an array of substrings.
+     * Yields all partitions of numStr with exactly s splits.
+     * Each partition is an array of substrings.
      */
     function* generatePartitions(numStr, s) {
       const n = numStr.length;
@@ -205,13 +243,12 @@
      * An asynchronous generator that yields valid partitions in order.
      * Each yielded partition is an array of objects { digits, words }.
      * Config parameters:
-     *   timeSlice: maximum ms to process per chunk (default 2ms)
-     *   maxYields: maximum iterations per frame (default 5)
+     *   timeSlice: max ms to process per chunk (default 2ms)
+     *   maxYields: max iterations per frame (default 5)
      */
     async function* asyncMnemonicGenerator(numStr, dict, config = { timeSlice: 2, maxYields: 5 }) {
       const n = numStr.length;
       let globalCount = 0;
-      // Loop over splits from 0 to n-1 so that partitions with fewer splits come first.
       for (let s = 0; s <= n - 1; s++) {
         for (const parts of generatePartitions(numStr, s)) {
           let valid = true;
@@ -235,7 +272,7 @@
       }
     }
     
-    // Simple debounce helper.
+    // Debounce helper.
     function debounce(func, delay) {
       let timerId;
       return function(...args) {
@@ -257,29 +294,36 @@
       }
       const avgFrameTime = times.reduce((a, b) => a + b, 0) / times.length;
       const timeSlice = Math.max(1, Math.floor(avgFrameTime * 0.1)); // 10% of average frame time
-      const maxYields = 5; // Target 5 iterations per frame.
+      const maxYields = 5;
       return { timeSlice, maxYields };
     }
     
     // UI Code
     document.addEventListener("DOMContentLoaded", async () => {
       const numericInput = document.getElementById("numericInput");
+      const minPercentileInput = document.getElementById("minPercentileInput");
+      const minPercentileDisplay = document.getElementById("minPercentileDisplay");
       const resultsDiv = document.getElementById("results");
     
       const dict = await loadDictionary();
+      const globalFreqs = await computeGlobalFrequencies(dict);
       const config = await calibrateConfig();
       console.log("Calibrated config:", config);
     
       // Update input from URL parameter.
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has("n")) numericInput.value = urlParams.get("n");
+      if (urlParams.has("minPercentile")) {
+        minPercentileInput.value = urlParams.get("minPercentile");
+        minPercentileDisplay.textContent = `${urlParams.get("minPercentile")}%`;
+      }
     
       let asyncGenerator = null;
-      let resultsLoaded = 0;
     
       function updateUrl() {
         const state = {
-          n: numericInput.value.trim()
+          n: numericInput.value.trim(),
+          minPercentile: minPercentileInput.value
         };
         const newUrl = window.location.pathname + "?" + new URLSearchParams(state).toString();
         history.replaceState(null, "", newUrl);
@@ -287,32 +331,73 @@
     
       function clearResults() {
         resultsDiv.innerHTML = "";
-        resultsLoaded = 0;
       }
     
-      // appendResult: Render each partition; for each segment show "<digits>: word1, word2"
-      function appendResult(partition) {
+      // appendResult: Render a partition with each segment on a clear line,
+      // with a big "+" between segments. Skip partition if any segment's filtered list is empty.
+      function appendResult(partition, minThreshold) {
+        // Check each segment; if any segment's filtered word list is empty, skip this partition.
+        for (const segmentObj of partition) {
+          const filtered = segmentObj.words.filter(entry => entry.freq >= minThreshold);
+          if (filtered.length === 0) return;
+        }
         const container = document.createElement("div");
         container.className = "result";
-        partition.forEach(segmentObj => {
+    
+        // Use flexbox column layout for the partition.
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+    
+        partition.forEach((segmentObj, idx) => {
           const segDiv = document.createElement("div");
           segDiv.className = "segment";
-          segDiv.textContent = `${segmentObj.digits}: ${segmentObj.words.join(", ")}`;
+          const filtered = segmentObj.words.filter(entry => entry.freq >= minThreshold);
+          const sorted = filtered.map(entry => entry.freq).sort((a, b) => a - b);
+          const idx90 = Math.floor(0.9 * (sorted.length - 1));
+          const topThreshold = sorted[idx90];
+          const rendered = filtered.map(entry => {
+            if (entry.freq >= topThreshold) {
+              return `<strong>${entry.word}</strong>`;
+            } else {
+              return entry.word;
+            }
+          });
+          segDiv.innerHTML = `${segmentObj.digits}: ${rendered.join(", ")}`;
           container.appendChild(segDiv);
+          // Insert a plus sign between segments if not the last segment.
+          if (idx < partition.length - 1) {
+            const plusDiv = document.createElement("div");
+            plusDiv.className = "plus";
+            plusDiv.textContent = "+";
+            // Ensure plusDiv is on its own line and left aligned.
+            plusDiv.style.width = "100%";
+            plusDiv.style.textAlign = "center";
+            container.appendChild(plusDiv);
+          }
         });
+        // Add an obvious separator after the partition.
+        const separator = document.createElement("hr");
+        separator.style.borderTop = "2px solid #8d6e63";
+        container.appendChild(separator);
         resultsDiv.appendChild(container);
       }
     
       async function loadMore() {
         if (!asyncGenerator) return;
-        // Load all results (effectively infinite)
         while (true) {
           const { value, done } = await asyncGenerator.next();
           if (done) break;
-          appendResult(value);
-          resultsLoaded++;
+          const minPercentile = parseInt(minPercentileInput.value, 10);
+          const globalThreshold = getPercentileValue(globalFreqs, minPercentile);
+          appendResult(value, globalThreshold);
         }
       }
+    
+      // Regenerate mid-drag and on input changes.
+      minPercentileInput.addEventListener("input", () => {
+        minPercentileDisplay.textContent = `${minPercentileInput.value}%`;
+        regenerate();
+      });
     
       const regenerate = debounce(async () => {
         clearResults();
@@ -320,7 +405,6 @@
         const numStr = numericInput.value.trim();
         if (!numStr) return;
         asyncGenerator = asyncMnemonicGenerator(numStr, dict, config);
-        resultsLoaded = 0;
         await loadMore();
       }, 100);
     
@@ -341,4 +425,3 @@
   </script>
 </body>
 </html>
-
