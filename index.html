@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mnemonic Generator Testbed</title>
+  <title>Mnemonics</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Use a whimsical font inspired by Lewis Carroll -->
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Alice&display=swap" rel="stylesheet">
   <style>
-    /* Lewis Carroll-inspired, responsive styling */
+    /* Adjusted for a denser layout and larger fonts on mobile */
     body {
-      background: #fdf6e3;
+      background: #fbf6f0; /* new parchment-like background */
       color: #333;
       font-family: 'Alice', serif, Georgia, "Times New Roman", Times, serif;
       margin: 0;
-      padding: 1rem;
+      padding: 0.5rem; /* kept dense padding */
       line-height: 1.4;
     }
     .container {
@@ -22,37 +22,48 @@
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+      gap: 0.75rem; /* reduced gap for more content density */
     }
     h1 {
       text-align: center;
-      font-size: 3rem;
-      margin-bottom: 0.25rem;
+      font-size: 2rem; /* smaller header size */
+      margin: 0;
       color: #5d4037;
+      text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15); /* whimsical shadow effect */
     }
     .input-group {
       display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
+      flex-direction: column; /* stack the two controls vertically */
+      gap: 0.25rem; /* reduced gap for a super dense layout */
       justify-content: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: #fbf6f0;
+      padding: 0.25rem;
+      transition: padding 0.2s, font-size 0.2s; /* smooth transition for compact mode */
     }
     .input-group > div {
-      flex: 1 1 250px;
+      flex: 1 1 auto;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.25rem;
     }
     .input-group label {
-      font-size: 1.1rem;
-      margin-bottom: 0.3rem;
+      font-size: 0.9rem;
+      margin-bottom: 0;
+      margin-right: 0.25rem;
       color: #3e2723;
+      white-space: nowrap; /* Prevent label text from wrapping */
     }
     .input-group input {
       font-size: 1rem;
       padding: 0.6rem;
-      border: 2px solid #3e2723;
+      border: 1px solid #5d4037; /* refined vintage border */
       background: #fff;
       color: #3e2723;
-      border-radius: 4px;
+      border-radius: 8px; /* more whimsical rounded corners */
       box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
       width: 100%;
       box-sizing: border-box;
@@ -65,10 +76,10 @@
     .result {
       display: flex;
       flex-direction: column;
-      margin-bottom: 1.5rem;
-      padding: 0.75rem;
+      margin-bottom: 0.75rem; /* reduced margin for denser layout */
+      padding: 0.5rem; /* reduced padding */
       background: #fff;
-      border: 2px dashed #a1887f;
+      border: 2px dotted #a1887f; /* more delicate dotted border for a whimsical look */
       border-radius: 8px;
       box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
       overflow-wrap: break-word;
@@ -77,7 +88,7 @@
       content: "";
       display: block;
       border-top: 2px solid #d7ccc8;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.5rem; /* reduced margin */
     }
     /* Each segment appears as a full-width row */
     .segment {
@@ -93,11 +104,12 @@
       font-weight: bold;
       color: #8d6e63;
       margin: 0.5rem 0;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1); /* subtle hand-drawn effect */
     }
     /* Explanation area styling */
     .explanation {
-      border-top: 3px double #3e2723;
-      padding-top: 1rem;
+      border-top: 3px double #8d6e63; /* softer, whimsical tone */
+      padding-top: 0.5rem; /* reduced padding for denser layout */
       font-size: 0.95rem;
       line-height: 1.5;
       color: #4e342e;
@@ -105,38 +117,76 @@
     .explanation h2 {
       text-align: center;
       font-size: 1.75rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.25rem; /* reduced margin */
       color: #5d4037;
     }
     .mapping-table {
       width: 100%;
       max-width: 600px;
-      margin: 0.5rem auto;
+      margin: 0.25rem auto; /* reduced margin */
       border-collapse: collapse;
       font-size: 1rem;
     }
     .mapping-table th, .mapping-table td {
-      border: 1px solid #5d4037;
+      border: 1px dotted #5d4037; /* playful dotted border */
       padding: 0.5rem;
       text-align: center;
       background: #fce4ec;
     }
     .mapping-table th {
-      background: #d1c4e9;
+      background: #e3dff8; /* lighter pastel tone for a more whimsical feel */
+    }
+    /* Mobile styles: Increase font sizes for readability on smaller screens */
+    @media (max-width: 600px) {
+      body {
+        font-size: 1.2rem;
+        padding: 0.75rem;
+      }
+      h1 {
+        font-size: 3.5rem;
+        margin: 0.2rem 0; /* slight margin for mobile */
+      }
+      .explanation h2 {
+        font-size: 2rem;
+      }
+      .input-group input {
+        font-size: 1.1rem;
+        padding: 0.8rem;
+      }
+      .mapping-table th,
+      .mapping-table td {
+        font-size: 1.1rem;
+        padding: 0.6rem;
+      }
+    }
+    .input-group.compact {
+      padding: 0.1rem;
+    }
+    .input-group.compact input {
+      font-size: 0.85rem;
+      padding: 0.3rem;
+    }
+    .input-group.compact label {
+      font-size: 0.75rem;
+    }
+    #minPercentileDisplay {
+      display: inline-block;
+      width: 4em; /* increased fixed width to accommodate "100%" without jumping */
+      text-align: right;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <!-- Interactive Area -->
-    <h1>Mnemonic Generator</h1>
+    <h1>Mnemonics</h1>
     <div class="input-group">
       <div>
-        <label for="numericInput">Numeric String</label>
-        <input autofocus type="text" id="numericInput" placeholder="Enter numeric string..." value="4202">
+        <label for="numericInput">Num</label>
+        <input autofocus type="text" id="numericInput" placeholder="Enter numeric string..." value="">
       </div>
       <div>
-        <label for="minPercentileInput">Min Frequency Percentile</label>
+        <label for="minPercentileInput">Word Freq</label>
         <input type="range" id="minPercentileInput" min="0" max="100" value="25">
         <span id="minPercentileDisplay">25%</span>
       </div>
@@ -145,13 +195,13 @@
     
     <!-- Explanation Area -->
     <div class="explanation">
-      <h2>About the Major System</h2>
+      <h2>About the System</h2>
       <p>
-        The Major System is a mnemonic technique that converts numbers into consonant sounds.
-        Vowels and fillers are then added to form memorable words. Popularized by Lewis Carroll,
-        this system helps in remembering long strings of digits.
+        Our system uses a classic mnemonic technique where numbers are transformed into consonant sounds.
+        Each digit stands for one or more consonant sounds according to a traditional mapping.
+        Vowels and extra letters can then be added freely to form full words, making it easier to remember the digits.
       </p>
-      <p>The standard mapping is as follows:</p>
+      <p>The table below shows the mapping between digits and the consonant sounds they represent:</p>
       <table class="mapping-table">
         <thead>
           <tr>
@@ -173,10 +223,9 @@
         </tbody>
       </table>
       <p>
-        The generator examines every possible contiguous partition of your numeric string,
-        yielding only those partitions for which each segment maps to a list of words from a preprocessed dictionary.
-        Use the slider above to filter out low-frequency words (based on frequency percentiles). Only words whose frequency is above the chosen percentile are shown;
-        words in the top 10% of the filtered set are rendered in bold.
+        Once you enter your numbers, our generator explores all possible ways to split the sequence.
+        It then searches a dictionary for words whose consonant patterns match the digits you provided.
+        The slider above lets you filter the results by word frequency, so you can focus on the words that best help you remember.
       </p>
     </div>
   </div>
@@ -416,6 +465,19 @@
         loadMore();
       }
     
+      // Additional code: toggle compact mode for the sticky control area
+      const inputGroup = document.querySelector('.input-group');
+      function checkSticky() {
+          // When the top of inputGroup is at or above 0, add compact class.
+          if (inputGroup.getBoundingClientRect().top <= 0) {
+              inputGroup.classList.add('compact');
+          } else {
+              inputGroup.classList.remove('compact');
+          }
+      }
+      window.addEventListener('scroll', checkSticky, { passive: true });
+      checkSticky(); // Run an initial check in case page load already places it at top.
+
       window.addEventListener("scroll", () => {
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 20) {
           loadMore();
