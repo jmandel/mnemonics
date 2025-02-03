@@ -174,6 +174,11 @@
       width: 4em; /* increased fixed width to accommodate "100%" without jumping */
       text-align: right;
     }
+    strong {
+       display: inline;
+       margin: 0;
+       padding: 0;
+    }
   </style>
 </head>
 <body>
@@ -183,12 +188,12 @@
     <div class="input-group">
       <div>
         <label for="numericInput">Num</label>
-        <input autofocus type="text" id="numericInput" placeholder="Enter numeric string..." value="">
+        <input autofocus type="number" id="numericInput" placeholder="Enter numeric string..." value="">
       </div>
       <div>
         <label for="minPercentileInput">Word Freq</label>
-        <input type="range" id="minPercentileInput" min="0" max="100" value="25">
-        <span id="minPercentileDisplay">25%</span>
+        <input type="range" id="minPercentileInput" min="0" max="100" value="90">
+        <span id="minPercentileDisplay">90%</span>
       </div>
     </div>
     <div id="results"></div>
@@ -347,143 +352,246 @@
       return { timeSlice, maxYields };
     }
     
-    // UI Code
-    document.addEventListener("DOMContentLoaded", async () => {
-      const numericInput = document.getElementById("numericInput");
-      const minPercentileInput = document.getElementById("minPercentileInput");
-      const minPercentileDisplay = document.getElementById("minPercentileDisplay");
-      const resultsDiv = document.getElementById("results");
+    // Utility functions for smooth fade transitions.
+    function fadeOut(element, duration = 200) {
+      element.style.transition = `opacity ${duration}ms ease-out`;
+      element.style.opacity = 0;
+    }
+
+    function fadeIn(element, duration = 200) {
+      element.style.transition = `opacity ${duration}ms ease-in`;
+      element.style.opacity = 1;
+    }
     
-      const dict = await loadDictionary();
-      const globalFreqs = await computeGlobalFrequencies(dict);
-      const config = await calibrateConfig();
-      console.log("Calibrated config:", config);
-    
-      // Update input from URL parameter.
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has("n")) numericInput.value = urlParams.get("n");
-      if (urlParams.has("minPercentile")) {
-        minPercentileInput.value = urlParams.get("minPercentile");
-        minPercentileDisplay.textContent = `${urlParams.get("minPercentile")}%`;
-      }
-    
-      let asyncGenerator = null;
-    
-      function updateUrl() {
-        const state = {
-          n: numericInput.value.trim(),
-          minPercentile: minPercentileInput.value
-        };
-        const newUrl = window.location.pathname + "?" + new URLSearchParams(state).toString();
-        history.replaceState(null, "", newUrl);
-      }
-    
-      function clearResults() {
-        resultsDiv.innerHTML = "";
-      }
-    
-      // appendResult: Render a partition with each segment on a clear line,
-      // with a big "+" between segments. Skip partition if any segment's filtered list is empty.
-      function appendResult(partition, minThreshold) {
-        // Check each segment; if any segment's filtered word list is empty, skip this partition.
-        for (const segmentObj of partition) {
-          const filtered = segmentObj.words.filter(entry => entry.freq >= minThreshold);
-          if (filtered.length === 0) return;
-        }
-        const container = document.createElement("div");
-        container.className = "result";
-    
-        // Use flexbox column layout for the partition.
-        container.style.display = "flex";
-        container.style.flexDirection = "column";
-    
-        partition.forEach((segmentObj, idx) => {
-          const segDiv = document.createElement("div");
-          segDiv.className = "segment";
-          const filtered = segmentObj.words.filter(entry => entry.freq >= minThreshold);
-          const sorted = filtered.map(entry => entry.freq).sort((a, b) => a - b);
-          const idx90 = Math.floor(0.9 * (sorted.length - 1));
-          const topThreshold = sorted[idx90];
-          const rendered = filtered.map(entry => {
-            if (entry.freq >= topThreshold) {
-              return `<strong>${entry.word}</strong>`;
-            } else {
-              return entry.word;
-            }
-          });
-          segDiv.innerHTML = `${segmentObj.digits}: ${rendered.join(", ")}`;
-          container.appendChild(segDiv);
-          // Insert a plus sign between segments if not the last segment.
-          if (idx < partition.length - 1) {
-            const plusDiv = document.createElement("div");
-            plusDiv.className = "plus";
-            plusDiv.textContent = "+";
-            // Ensure plusDiv is on its own line and left aligned.
-            plusDiv.style.width = "100%";
-            plusDiv.style.textAlign = "center";
-            container.appendChild(plusDiv);
+    // Re-render card content based on the current minPercentile.
+    // This function builds a new innerHTML string for the card in one go
+    // rather than updating/hiding individual child elements.
+    function reRenderCard(card, minPercentile) {
+      if (!card.__partition__) return;
+      let html = "";
+      card.__partition__.forEach((segmentObj, idx) => {
+        // Use the cached sortedFreqs to compute the local threshold.
+        const localThreshold = getPercentileValue(segmentObj.sortedFreqs, minPercentile);
+        // Filter words meeting the local threshold.
+        const filtered = segmentObj.words.filter(entry => entry.freq >= localThreshold);
+        if (filtered.length > 0) {
+          html += `<div class="segment">${segmentObj.digits}: ${filtered.map(entry => entry.word.trim()).join(", ")}</div>`;
+          if (idx < card.__partition__.length - 1) {
+            html += `<div class="plus">+</div>`;
           }
-        });
-        // Add an obvious separator after the partition.
-        const separator = document.createElement("hr");
-        separator.style.borderTop = "2px solid #8d6e63";
-        container.appendChild(separator);
-        resultsDiv.appendChild(container);
-      }
+        }
+      });
+      card.innerHTML = html;
+    }
+
+    // Replace the createCard function with this updated version
+    function createCard(partition, minPercentile) {
+      const card = document.createElement("div");
+      card.className = "result";
+      card.__partition__ = partition; // Store partition data for later updates
+      
+      partition.forEach((segmentObj, idx) => {
+        // Create segment div
+        const segmentDiv = document.createElement("div");
+        segmentDiv.className = "segment";
+        card.appendChild(segmentDiv);
+        
+        // Add plus if not last segment
+        if (idx < partition.length - 1) {
+          const plusDiv = document.createElement("div");
+          plusDiv.className = "plus";
+          plusDiv.textContent = "+";
+          card.appendChild(plusDiv);
+        }
+      });
+      
+      // Initial update of content
+      reRenderCard(card, minPercentile);
+      return card;
+    }
+
+    // Virtual scrolling constants: approximate height per card and extra buffer cards
+    const CARD_HEIGHT = 120; // approximate height in pixels (adjust as needed)
+    const BUFFER_COUNT = 5;  // extra cards to render above and below the viewport
     
-      async function loadMore() {
-        if (!asyncGenerator) return;
-        while (true) {
-          const { value, done } = await asyncGenerator.next();
-          if (done) break;
-          const minPercentile = parseInt(minPercentileInput.value, 10);
-          const globalThreshold = getPercentileValue(globalFreqs, minPercentile);
-          appendResult(value, globalThreshold);
+    // New function to render only the visible cards (virtual scroller)
+    function renderVisibleCards() {
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "";
+      
+      // Use a simplified approach: we render only visible cards, with no spacer logic.
+      const currentMin = parseInt(minPercentileInput.value, 10);
+      const total = allPartitions.length;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      
+      // Compute the first visible index based solely on scrollTop.
+      let firstVisibleIndex = Math.floor(scrollTop / CARD_HEIGHT);
+      firstVisibleIndex = Math.max(0, firstVisibleIndex);
+      
+      // Determine the number of cards to render based on window height and some buffer.
+      const visibleCount = Math.ceil(windowHeight / CARD_HEIGHT) + 2 * BUFFER_COUNT;
+      const lastVisibleIndex = Math.min(total, firstVisibleIndex + visibleCount);
+      
+      // Debug logging.
+      console.log("New scroll debug:",
+         "scrollTop:", scrollTop,
+         "Total Cards:", total,
+         "Visible Cards:", (lastVisibleIndex - firstVisibleIndex),
+         "First Visible Index:", firstVisibleIndex);
+      
+      // Render only the visible partitions.
+      for (let i = firstVisibleIndex; i < lastVisibleIndex; i++) {
+          const partition = allPartitions[i];
+          const card = createCard(partition, currentMin);
+          card.dataset.cardIndex = i;
+          resultsDiv.appendChild(card);
+      }
+    }
+
+    // Update the filter threshold on slider move while preserving scroll position.
+    minPercentileInput.addEventListener("input", () => {
+      minPercentileDisplay.textContent = `${minPercentileInput.value}%`;
+      const newMin = parseInt(minPercentileInput.value, 10);
+
+      // Locate the pinned card: choose the topmost card whose top is visible (or just above)
+      let pinnedCard = null;
+      let bestVisible = Number.POSITIVE_INFINITY;
+      let bestAbove = Number.NEGATIVE_INFINITY;
+      document.querySelectorAll('.result').forEach(card => {
+         const rect = card.getBoundingClientRect();
+         if (rect.top >= 0 && rect.top < bestVisible) {
+             bestVisible = rect.top;
+             pinnedCard = card;
+         } else if (rect.top < 0 && rect.top > bestAbove) {
+             bestAbove = rect.top;
+             pinnedCard = card;
+         }
+      });
+      // Save the pinned card's index (dataset attribute) and its current relative top.
+      const pinnedIndex = pinnedCard ? pinnedCard.dataset.cardIndex : null;
+      const pinnedRelative = pinnedCard ? pinnedCard.getBoundingClientRect().top : 0;
+
+      // Re-render visible cards completely (which uses the current newMin frequency).
+      renderVisibleCards();
+
+      // After re-rendering, locate the card with the same dataset index.
+      if (pinnedIndex !== null) {
+         const newPinnedCard = Array.from(document.querySelectorAll('.result'))
+            .find(card => card.dataset.cardIndex === pinnedIndex);
+         if (newPinnedCard) {
+             const newRelative = newPinnedCard.getBoundingClientRect().top;
+             const delta = newRelative - pinnedRelative;
+             if (Math.abs(delta) > 0) {
+                 window.scrollBy(0, delta);
+             }
+         }
+      }
+    });
+
+    // Global variables.
+    let dict = {};
+    let allPartitions = [];
+
+    // Wrap all initialization in DOMContentLoaded so we wait for the DOM and dictionary.
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Prefill the inputs from URL hash parameters if present.
+      if (window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        if (hashParams.has("n")) {
+          numericInput.value = hashParams.get("n");
+        }
+        if (hashParams.has("minPercentile")) {
+          minPercentileInput.value = hashParams.get("minPercentile");
+          minPercentileDisplay.textContent = `${hashParams.get("minPercentile")}%`;
         }
       }
-    
-      // Regenerate mid-drag and on input changes.
-      minPercentileInput.addEventListener("input", () => {
-        minPercentileDisplay.textContent = `${minPercentileInput.value}%`;
-        regenerate();
+      
+      // Load the dictionary from cmudict.json and assign to dict.
+      dict = await loadDictionary();
+      
+      // When the numeric input changes, regenerate partitions and then render all cards.
+      numericInput.addEventListener("input", () => {
+         updateUrl();
+         // Synchronously generate all partitions.
+         allPartitions = syncPartitionsGenerator(numericInput.value.trim(), dict);
+         renderVisibleCards();
       });
-    
-      const regenerate = debounce(async () => {
-        clearResults();
-        updateUrl();
-        const numStr = numericInput.value.trim();
-        if (!numStr) return;
-        asyncGenerator = asyncMnemonicGenerator(numStr, dict, config);
-        await loadMore();
-      }, 100);
-    
-      numericInput.addEventListener("input", regenerate);
-    
+      
       if (numericInput.value.trim()) {
         updateUrl();
-        asyncGenerator = asyncMnemonicGenerator(numericInput.value.trim(), dict, config);
-        loadMore();
+        // Synchronously generate all partitions.
+        allPartitions = syncPartitionsGenerator(numericInput.value.trim(), dict);
+        renderVisibleCards();
       }
-    
-      // Additional code: toggle compact mode for the sticky control area
-      const inputGroup = document.querySelector('.input-group');
-      function checkSticky() {
-          // When the top of inputGroup is at or above 0, add compact class.
-          if (inputGroup.getBoundingClientRect().top <= 0) {
-              inputGroup.classList.add('compact');
-          } else {
-              inputGroup.classList.remove('compact');
-          }
-      }
-      window.addEventListener('scroll', checkSticky, { passive: true });
-      checkSticky(); // Run an initial check in case page load already places it at top.
-
-      window.addEventListener("scroll", () => {
-        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 20) {
-          loadMore();
-        }
-      });
     });
+
+    // Additional code: toggle compact mode for the sticky control area
+    const inputGroup = document.querySelector('.input-group');
+    function checkSticky() {
+        // When the top of inputGroup is at or above 0, add compact class.
+        if (inputGroup.getBoundingClientRect().top <= 0) {
+            inputGroup.classList.add('compact');
+        } else {
+            inputGroup.classList.remove('compact');
+        }
+    }
+    window.addEventListener('scroll', checkSticky, { passive: true });
+    checkSticky(); // Run an initial check in case page load already places it at top.
+
+    // New function: Synchronously generate partitions for the provided numeric string.
+    function syncPartitionsGenerator(numStr, dict) {
+      let partitions = [];
+      const n = numStr.length;
+      // For every possible number of splits (s)
+      for (let s = 0; s <= n - 1; s++) {
+        // generatePartitions() is synchronous.
+        for (const parts of generatePartitions(numStr, s)) {
+          let valid = true;
+          const segmentObjects = [];
+          for (const seg of parts) {
+            if (dict[seg]) {
+              const words = dict[seg];
+              // Pre-calculate and cache the sorted frequency array for this segment.
+              const sortedFreqs = words.map(entry => entry.freq).sort((a, b) => a - b);
+              segmentObjects.push({ digits: seg, words, sortedFreqs });
+            } else {
+              valid = false;
+              break;
+            }
+          }
+          if (valid) {
+            partitions.push(segmentObjects);
+          }
+        }
+      }
+      return partitions;
+    }
+
+    // New function: updateUrl using hash parameters instead of query parameters.
+    function updateUrl() {
+      const state = {
+        n: numericInput.value.trim(),
+        minPercentile: minPercentileInput.value
+      };
+      const hash = new URLSearchParams(state).toString();
+      history.replaceState(null, "", "#" + hash);
+    }
+
+    // Update visible cards on scroll (only render cards that are presently visible)
+    window.addEventListener("scroll", () => {
+       requestAnimationFrame(renderVisibleCards);
+    });
+
+    // Helper function to check if a partition produces any output at a given frequency threshold.
+    function hasOutput(partition, minPercentile) {
+       for (let seg of partition) {
+           const localThreshold = getPercentileValue(seg.sortedFreqs, minPercentile);
+           const filtered = seg.words.filter(entry => entry.freq >= localThreshold);
+           if (filtered.length > 0) return true;
+       }
+       return false;
+    }
   </script>
 </body>
 </html>
