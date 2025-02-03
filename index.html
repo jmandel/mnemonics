@@ -297,12 +297,12 @@
      * An asynchronous generator that yields valid partitions in order.
      * Each yielded partition is an array of objects { digits, words }.
      * Config parameters:
-     *   timeSlice: max ms to process per chunk (default 2ms)
-     *   maxYields: max iterations per frame (default 5)
+     *   firstChunkLimit: max iterations per frame (default 5)
      */
-    async function* asyncMnemonicGenerator(numStr, dict, config = { timeSlice: 2, maxYields: 5 }) {
+    async function* asyncMnemonicGenerator(numStr, dict, config = { firstChunkLimit: 5 }) {
       const n = numStr.length;
       let globalCount = 0;
+      let firstChunk = true;
       for (let s = 0; s <= n - 1; s++) {
         for (const parts of generatePartitions(numStr, s)) {
           let valid = true;
@@ -319,8 +319,10 @@
             yield segmentObjects;
           }
           globalCount++;
-          if (globalCount % config.maxYields === 0) {
-            await new Promise(requestAnimationFrame);
+          if (firstChunk && globalCount === config.firstChunkLimit) {
+            // Wait once after the first small batch.
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            firstChunk = false;
           }
         }
       }
@@ -335,13 +337,16 @@
       };
     }
     
+    // NEW: Debounced version of renderVisibleCards to avoid frequent full re-renders.
+    const debouncedRenderVisibleCards = debounce(renderVisibleCards, 100);
+    
     // calibrateConfig: Measure frame times and compute config values.
     async function calibrateConfig() {
       const iterations = 10;
       let times = [];
       let last = performance.now();
       for (let i = 0; i < iterations; i++) {
-        await new Promise(requestAnimationFrame);
+        await new Promise(resolve => requestAnimationFrame(resolve));
         const now = performance.now();
         times.push(now - last);
         last = now;
@@ -365,17 +370,38 @@
     
     // Re-render card content based on the current minPercentile.
     // This function builds a new innerHTML string for the card in one go
-    // rather than updating/hiding individual child elements.
+    // with words styled based on frequency.
     function reRenderCard(card, minPercentile) {
       if (!card.__partition__) return;
       let html = "";
+      // Cache the global maximum and pre-calculate the logarithm divisor
+      const globalMaxFreq = globalSortedFrequencies[globalSortedFrequencies.length - 1];
+      const logDivisor = globalMaxFreq ? Math.log(globalMaxFreq + 1) : 1;
+      // Pre-calculate discrete styles for 4 categories with lighter greys for lowest frequencies.
+      const categories = [
+        { color: "rgb(200,200,200)", weight: 400 }, // lowest frequency: lighter grey
+        { color: "rgb(170,170,170)", weight: 500 },
+        { color: "rgb(120,120,120)", weight: 600 },
+        { color: "rgb(0,0,0)", weight: 700 }         // highest frequency
+      ];
+      
       card.__partition__.forEach((segmentObj, idx) => {
         // Use the cached sortedFreqs to compute the local threshold.
         const localThreshold = getPercentileValue(segmentObj.sortedFreqs, minPercentile);
         // Filter words meeting the local threshold.
         const filtered = segmentObj.words.filter(entry => entry.freq >= localThreshold);
         if (filtered.length > 0) {
-          html += `<div class="segment">${segmentObj.digits}: ${filtered.map(entry => entry.word.trim()).join(", ")}</div>`;
+          html += `<div class="segment">${segmentObj.digits}: `;
+          html += filtered.map(entry => {
+            const wordStr = entry.word.trim();
+            // Normalize frequency using cached logarithmic divisor.
+            let norm = Math.log(entry.freq + 1) / logDivisor;
+            // Determine category using new breakpoints.
+            let category = norm < 0.25 ? 0 : norm < 0.50 ? 1 : norm < 0.75 ? 2 : 3;
+            const catStyle = categories[category];
+            return `<span style="color: ${catStyle.color}; font-weight: ${catStyle.weight};">${wordStr}</span>`;
+          }).join(", ");
+          html += `</div>`;
           if (idx < card.__partition__.length - 1) {
             html += `<div class="plus">+</div>`;
           }
@@ -492,10 +518,15 @@
     // Global variables.
     let dict = {};
     let allPartitions = [];
+    let currentGenerationToken = 0; // NEW: token for cancellation of previous async generation
+    
+    // NEW: Global sorted frequencies from the dictionary and bolding threshold.
+    let globalSortedFrequencies = [];
+    let boldThreshold = 0;
 
-    // Wrap all initialization in DOMContentLoaded so we wait for the DOM and dictionary.
-    document.addEventListener("DOMContentLoaded", async () => {
-      // Prefill the inputs from URL hash parameters if present.
+    // NEW: Asynchronous initialization that binds UI events immediately
+    document.addEventListener("DOMContentLoaded", () => {
+      // Prefill inputs from URL hash parameters if present.
       if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         if (hashParams.has("n")) {
@@ -507,23 +538,35 @@
         }
       }
       
-      // Load the dictionary from cmudict.json and assign to dict.
-      dict = await loadDictionary();
-      
-      // When the numeric input changes, regenerate partitions and then render all cards.
+      // Bind the numeric input event listener immediately.
       numericInput.addEventListener("input", () => {
-         updateUrl();
-         // Synchronously generate all partitions.
-         allPartitions = syncPartitionsGenerator(numericInput.value.trim(), dict);
-         renderVisibleCards();
+        updateUrl();
+        const trimmed = numericInput.value.trim();
+        if (trimmed === "") {
+          allPartitions = [];
+          document.getElementById("results").innerHTML = "";
+          return;
+        }
+        if (dict) {  // Only generate partitions if the dictionary is loaded.
+          generateAndRenderPartitions(trimmed);
+        }
       });
       
-      if (numericInput.value.trim()) {
-        updateUrl();
-        // Synchronously generate all partitions.
-        allPartitions = syncPartitionsGenerator(numericInput.value.trim(), dict);
-        renderVisibleCards();
-      }
+      // Asynchronously load the dictionary and then perform frequency computations.
+      loadDictionary()
+        .then((data) => {
+          dict = data;
+          return computeGlobalFrequencies(dict);
+        })
+        .then((sortedFreqs) => {
+          globalSortedFrequencies = sortedFreqs;
+          boldThreshold = getPercentileValue(globalSortedFrequencies, 90);
+          // If a prefilled numeric input exists, start generation now.
+          if (numericInput.value.trim()) {
+            updateUrl();
+            generateAndRenderPartitions(numericInput.value.trim());
+          }
+        });
     });
 
     // Additional code: toggle compact mode for the sticky control area
@@ -539,20 +582,18 @@
     window.addEventListener('scroll', checkSticky, { passive: true });
     checkSticky(); // Run an initial check in case page load already places it at top.
 
-    // New function: Synchronously generate partitions for the provided numeric string.
-    function syncPartitionsGenerator(numStr, dict) {
-      let partitions = [];
+    // NEW: Lazy synchronous generator that yields partitions one by one.
+    function* lazyPartitionsGenerator(numStr, dict) {
       const n = numStr.length;
       // For every possible number of splits (s)
       for (let s = 0; s <= n - 1; s++) {
-        // generatePartitions() is synchronous.
         for (const parts of generatePartitions(numStr, s)) {
           let valid = true;
           const segmentObjects = [];
           for (const seg of parts) {
             if (dict[seg]) {
               const words = dict[seg];
-              // Pre-calculate and cache the sorted frequency array for this segment.
+              // Calculate and cache the sorted frequency array.
               const sortedFreqs = words.map(entry => entry.freq).sort((a, b) => a - b);
               segmentObjects.push({ digits: seg, words, sortedFreqs });
             } else {
@@ -561,11 +602,10 @@
             }
           }
           if (valid) {
-            partitions.push(segmentObjects);
+            yield segmentObjects;
           }
         }
       }
-      return partitions;
     }
 
     // New function: updateUrl using hash parameters instead of query parameters.
@@ -591,6 +631,38 @@
            if (filtered.length > 0) return true;
        }
        return false;
+    }
+
+    // Updated: Async generation function for partitions in chunks.
+    async function generateAndRenderPartitions(numStr) {
+      currentGenerationToken++;
+      const myToken = currentGenerationToken;
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = ""; // clear UI
+      allPartitions = [];
+
+      // Get a lazy iterator of partitions.
+      const iterator = lazyPartitionsGenerator(numStr, dict);
+
+      // Process a small batch (e.g., 5 partitions) at a time.
+      const batchSize = 5;
+      function processBatch() {
+        if (currentGenerationToken !== myToken) return;
+        let count = 0;
+        let next;
+        while (count < batchSize && !(next = iterator.next()).done) {
+          allPartitions.push(next.value);
+          count++;
+        }
+
+        debouncedRenderVisibleCards();
+
+        if (!next.done) {
+          setTimeout(processBatch, 0);
+        }
+      }
+
+      processBatch();
     }
   </script>
 </body>
