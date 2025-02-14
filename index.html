@@ -8,21 +8,40 @@
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Alice&display=swap" rel="stylesheet">
   <style>
-    /* Adjusted for a denser layout and larger fonts on mobile */
-    body {
-      background: #fbf6f0; /* new parchment-like background */
-      color: #333;
-      font-family: 'Alice', serif, Georgia, "Times New Roman", Times, serif;
+    html {
+      font-size: 16px;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
       margin: 0;
-      padding: 0.5rem; /* kept dense padding */
+      padding: 0;
+      overflow: hidden;  /* prevent any scrolling on the body */
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: 3.75rem 1fr 3.75rem;  /* 60px -> 3.75rem */
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #f8f9fa;
+      color: #212529;
+      font-family: 'Alice', serif;
       line-height: 1.4;
+      font-size: 1rem;  /* Will scale with html font-size */
     }
     .container {
       max-width: 900px;
       margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem; /* reduced gap for more content density */
+      display: grid;
+      /* Grid rows: exactly 100vh */
+      grid-template-rows: 3vh 94vh 3vh;
+      gap: 0;
+      height: 100%;
+      padding: 0 0.5rem;
     }
     h1 {
       text-align: center;
@@ -34,14 +53,13 @@
     .input-group {
       display: flex;
       flex-direction: column; /* stack the two controls vertically */
-      gap: 0.25rem; /* reduced gap for a super dense layout */
+      gap: 0;
       justify-content: center;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
       background: #fbf6f0;
-      padding: 0.25rem;
-      transition: padding 0.2s, font-size 0.2s; /* smooth transition for compact mode */
+      padding: 0;
+      transition: padding 0.2s, font-size 0.2s;
+      font-size: 0.75rem;        /* slightly smaller font size */
+      height: 3vh;              /* explicit height for input group */
     }
     .input-group > div {
       flex: 1 1 auto;
@@ -68,43 +86,72 @@
       width: 100%;
       box-sizing: border-box;
     }
-    /* Results: page grows longer */
+    /* Results: display one card centered */
     #results {
-      margin-top: 1rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    /* Navigation controls for Prev/Next buttons */
+    .nav-controls {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      height: 3vh;         /* explicit height for nav controls */
+      align-items: center;
+    }
+    .nav-controls button {
+      padding: 0.1rem 0.5rem;
+      font-size: 0.9rem;
+      cursor: pointer;
     }
     /* Each partition container uses flexbox in column direction */
     .result {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 0.75rem; /* reduced margin for denser layout */
-      padding: 0.5rem; /* reduced padding */
-      background: #fff;
-      border: 2px dotted #a1887f; /* more delicate dotted border for a whimsical look */
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      background: white;
+      border: 1px solid #dee2e6;
       border-radius: 8px;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-      overflow-wrap: break-word;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
-    .result::before {
-      content: "";
-      display: block;
-      border-top: 2px solid #d7ccc8;
-      margin-bottom: 0.5rem; /* reduced margin */
+    .result::before,
+    .result::after {
+      display: none;
+      content: none;
     }
     /* Each segment appears as a full-width row */
     .segment {
-      width: 100%;
-      padding: 0.25rem;
-      font-style: italic;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #f1f8ff;
+      border-radius: 4px;
+      font-size: 1.1rem;  /* Will scale with zoom */
+      color: #1864ab;
+    }
+    .segment::before,
+    .segment::after {
+      display: none;
+      content: none;
     }
     /* The plus sign appears on its own line, centered */
     .plus {
-      width: 100%;
       text-align: center;
-      font-size: 2rem;
-      font-weight: bold;
-      color: #8d6e63;
+      font-size: 1.5rem;  /* Will scale with zoom */
+      color: #868e96;
       margin: 0.5rem 0;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.1); /* subtle hand-drawn effect */
+      content: "+";
+    }
+    .plus::before,
+    .plus::after {
+      display: none;
+      content: none;
     }
     /* Explanation area styling */
     .explanation {
@@ -123,83 +170,196 @@
     .mapping-table {
       width: 100%;
       max-width: 600px;
-      margin: 0.25rem auto; /* reduced margin */
+      margin: 1rem auto;
       border-collapse: collapse;
-      font-size: 1rem;
-    }
-    .mapping-table th, .mapping-table td {
-      border: 1px dotted #5d4037; /* playful dotted border */
-      padding: 0.5rem;
-      text-align: center;
-      background: #fce4ec;
+      background: white;
     }
     .mapping-table th {
-      background: #e3dff8; /* lighter pastel tone for a more whimsical feel */
+      background: #4dabf7;
+      color: white;
+      padding: 0.75rem;
+      text-align: left;
     }
-    /* Mobile styles: Increase font sizes for readability on smaller screens */
-    @media (max-width: 600px) {
-      body {
-        font-size: 1.2rem;
-        padding: 0.75rem;
-      }
-      h1 {
-        font-size: 3.5rem;
-        margin: 0.2rem 0; /* slight margin for mobile */
-      }
-      .explanation h2 {
-        font-size: 2rem;
-      }
-      .input-group input {
-        font-size: 1.1rem;
-        padding: 0.8rem;
-      }
-      .mapping-table th,
-      .mapping-table td {
-        font-size: 1.1rem;
-        padding: 0.6rem;
-      }
+    .mapping-table td {
+      padding: 0.75rem;
+      border: 1px solid #dee2e6;
+      color: #495057;
     }
-    .input-group.compact {
-      padding: 0.1rem;
+    .mapping-table tr:nth-child(even) {
+      background: #f8f9fa;
     }
-    .input-group.compact input {
-      font-size: 0.85rem;
-      padding: 0.3rem;
+    /* Update header styles to be a single flexbox */
+    .header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0.75rem;
+      background: white;
+      border-bottom: 1px solid #dee2e6;
     }
-    .input-group.compact label {
-      font-size: 0.75rem;
+
+    /* Remove nested header-content and input-controls */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem;
     }
-    #minPercentileDisplay {
-      display: inline-block;
-      width: 4em; /* increased fixed width to accommodate "100%" without jumping */
-      text-align: right;
+
+    /* Style the inputs directly */
+    .header input[type="number"] {
+      flex: 3;  /* Takes up more space */
+      padding: 0.5rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      background: white;
+      font-family: inherit;
+      font-size: 1rem;
+      color: #212529;
+      transition: all 0.2s ease;
     }
-    strong {
-       display: inline;
-       margin: 0;
-       padding: 0;
+
+    .header select {
+      flex: 2;  /* Takes up less space than the number input */
+      padding: 0.5rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      background: white;
+      font-family: inherit;
+      font-size: 1rem;
+      color: #212529;
+      transition: all 0.2s ease;
+    }
+
+    /* Keep help icon styles mostly the same but adjust flex */
+    .help-icon {
+      flex: 0 0 2.5rem;  /* Fixed width, doesn't grow or shrink */
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #4dabf7;
+      color: white;
+      border-radius: 4px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    /* Main content area */
+    #results {
+      overflow-y: auto;
+    }
+
+    /* Footer styles */
+    .footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      background: white;
+      border-top: 1px solid #dee2e6;
+      padding: 0.75rem;
+    }
+
+    .footer button {
+      padding: 0.5rem 1.5rem;
+      font-family: inherit;
+      font-size: 1rem;  /* Will scale with zoom */
+      color: white;
+      background: #4dabf7;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .footer button:hover {
+      background: #3b8fd5;
+    }
+
+    /* Modal for explanation */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+
+    .modal-content {
+      position: relative;
+      background: white;
+      margin: 2rem auto;
+      padding: 2rem;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow-y: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-content h2 {
+      text-align: center;
+      color: #1864ab;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-content h2::before,
+    .modal-content h2::after {
+      display: none;
+      content: none;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      cursor: pointer;
+      font-size: 1.5rem;  /* Will scale with zoom */
+      content: "X";
+    }
+
+    /* Update instruction styles */
+    .instruction {
+      text-align: center;
+      padding: 2rem;
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      color: #495057;
+      font-size: 1.1rem;  /* Will scale with zoom */
+      line-height: 1.6;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Interactive Area -->
-    <h1>Mnemonics</h1>
-    <div class="input-group">
-      <div>
-        <label for="numericInput">Num</label>
-        <input autofocus type="number" id="numericInput" placeholder="Enter numeric string..." value="">
-      </div>
-      <div>
-        <label for="minPercentileInput">Word Freq</label>
-        <input type="range" id="minPercentileInput" min="0" max="100" value="90">
-        <span id="minPercentileDisplay">90%</span>
-      </div>
-    </div>
-    <div id="results"></div>
-    
-    <!-- Explanation Area -->
-    <div class="explanation">
+  <header class="header">
+    <input type="number" id="numericInput" placeholder="Enter numeric string..." autofocus>
+    <select id="freqSelect">
+      <option value="95">High Freq</option>
+      <option value="80" selected>Med Freq</option>
+      <option value="50">Low Freq</option>
+    </select>
+    <div class="help-icon" id="helpBtn">?</div>
+  </header>
+
+  <main id="results"></main>
+
+  <footer class="footer">
+    <button id="prevBtn">← Previous</button>
+    <button id="nextBtn">Next →</button>
+  </footer>
+
+  <!-- Add modal for explanation -->
+  <div id="explanationModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" id="closeModal">&times;</span>
+      <!-- Move the existing explanation content here -->
       <h2>About the System</h2>
       <p>
         Our system uses a classic mnemonic technique where numbers are transformed into consonant sounds.
@@ -236,6 +396,11 @@
   </div>
   
   <script type="module">
+    // Global Variables
+    let dict = {};
+    let allPartitions = [];
+    let currentGenerationToken = 0;
+    
     // --- Mnemonic Generator Implementation ---
     // This implementation loads a preprocessed JSON dictionary (cmudict.json)
     // and streams valid partitions using an asynchronous generator.
@@ -264,261 +429,165 @@
       return sortedArray[index];
     }
     
-    /**
-     * generatePartitions(numStr, s)
-     * Yields all partitions of numStr with exactly s splits.
-     * Each partition is an array of substrings.
-     */
-    function* generatePartitions(numStr, s) {
-      const n = numStr.length;
-      function* helper(start, count, combination) {
-        if (count === 0) {
-          yield combination;
-          return;
-        }
-        for (let i = start; i <= n - count; i++) {
-          yield* helper(i + 1, count - 1, combination.concat(i));
-        }
+    // Replace the generatePartitions function with this new version
+    function generatePartitions(numStr) {
+      const items = numStr.split('');
+      const n = items.length;
+      const totalPartitions = Math.pow(2, n - 1);
+      const partitions = [];
+      
+      for (let j = 0; j < totalPartitions; j++) {
+        const partition = nthPartitionBalanced(j, items);
+        // Convert partition format to match existing code
+        partitions.push(partition.map(seg => seg.join('')));
       }
-      for (const combination of helper(1, s, [])) {
-        const parts = [];
-        let prev = 0;
-        for (const index of combination) {
-          parts.push(numStr.substring(prev, index));
-          prev = index;
-        }
-        parts.push(numStr.substring(prev));
-        yield parts;
-      }
+      
+      return partitions;
     }
     
-    /**
-     * asyncMnemonicGenerator(numStr, dict, config)
-     * An asynchronous generator that yields valid partitions in order.
-     * Each yielded partition is an array of objects { digits, words }.
-     * Config parameters:
-     *   firstChunkLimit: max iterations per frame (default 5)
-     */
-    async function* asyncMnemonicGenerator(numStr, dict, config = { firstChunkLimit: 5 }) {
-      const n = numStr.length;
-      let globalCount = 0;
-      let firstChunk = true;
-      for (let s = 0; s <= n - 1; s++) {
-        for (const parts of generatePartitions(numStr, s)) {
-          let valid = true;
-          const segmentObjects = [];
-          for (const seg of parts) {
-            if (dict[seg]) {
-              segmentObjects.push({ digits: seg, words: dict[seg] });
-            } else {
-              valid = false;
+    // Add the new helper functions for balanced partitions
+    function nthPartitionBalanced(j, items) {
+      const m = items.length;
+      const n = m - 1; // possible breakpoints
+      let total = 0;
+      let chosenK = null;
+      let localRank = null;
+      
+      for (let k = 0; k <= n; k++) {
+        const count = binom(m - 1, k);
+        if (j < total + count) {
+          chosenK = k;
+          localRank = j - total;
               break;
-            }
-          }
-          if (valid) {
-            yield segmentObjects;
-          }
-          globalCount++;
-          if (firstChunk && globalCount === config.firstChunkLimit) {
-            // Wait once after the first small batch.
-            await new Promise(resolve => requestAnimationFrame(resolve));
-            firstChunk = false;
-          }
+        }
+        total += count;
+      }
+      
+      if (chosenK === null) {
+        throw new Error("j is too large for list length " + m);
+      }
+      
+      const breakpoints = unrankBalancedForK(chosenK, m, localRank);
+      const partition = [];
+      let start = 0;
+      
+      for (let i = 0; i < breakpoints.length; i++) {
+        partition.push(items.slice(start, breakpoints[i] + 1));
+        start = breakpoints[i] + 1;
+      }
+      partition.push(items.slice(start));
+      return partition;
+    }
+    
+    // Add all the supporting functions
+    function unrankBalancedForK(k, m, rank) {
+      const s = k + 1;
+      const comp = unrankComposition(s, m, rank);
+      const breakpoints = [];
+      let cum = comp[0] - 1;
+      
+      if (k >= 1) breakpoints.push(cum);
+      for (let i = 1; i < s - 1; i++) {
+        cum += comp[i];
+        breakpoints.push(cum);
+      }
+      return breakpoints;
+    }
+    
+    function unrankComposition(s, m, rank) {
+      const costMap = dp(1, m, s, m);
+      const costs = Object.keys(costMap).map(Number).sort((a, b) => a - b);
+      let bucket = null;
+      
+      for (let c of costs) {
+        if (rank < costMap[c]) {
+          bucket = c;
+          break;
+        }
+        rank -= costMap[c];
+      }
+      
+      if (bucket === null) {
+        throw new Error("Rank is too high in unrankComposition");
+      }
+      
+      return unrankLex(1, m, s, m, bucket, rank);
+    }
+    
+    function dp(i, R, s, m, memo = {}) {
+      const key = i + "," + R;
+      if (key in memo) return memo[key];
+      
+      let result = {};
+      if (i > s) {
+        if (R === 0) result[0] = 1;
+        memo[key] = result;
+        return result;
+      }
+      
+      for (let d = 1; d <= R - (s - i); d++) {
+        const cost_d = Math.pow(s * d - m, 2);
+        const next = dp(i + 1, R - d, s, m, memo);
+        for (let costNext in next) {
+          const totalCost = cost_d + Number(costNext);
+          result[totalCost] = (result[totalCost] || 0) + next[costNext];
         }
       }
-    }
-    
-    // Debounce helper.
-    function debounce(func, delay) {
-      let timerId;
-      return function(...args) {
-        clearTimeout(timerId);
-        timerId = setTimeout(() => func.apply(this, args), delay);
-      };
-    }
-    
-    // NEW: Debounced version of renderVisibleCards to avoid frequent full re-renders.
-    const debouncedRenderVisibleCards = debounce(renderVisibleCards, 100);
-    
-    // calibrateConfig: Measure frame times and compute config values.
-    async function calibrateConfig() {
-      const iterations = 10;
-      let times = [];
-      let last = performance.now();
-      for (let i = 0; i < iterations; i++) {
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        const now = performance.now();
-        times.push(now - last);
-        last = now;
-      }
-      const avgFrameTime = times.reduce((a, b) => a + b, 0) / times.length;
-      const timeSlice = Math.max(1, Math.floor(avgFrameTime * 0.1)); // 10% of average frame time
-      const maxYields = 5;
-      return { timeSlice, maxYields };
-    }
-    
-    // Utility functions for smooth fade transitions.
-    function fadeOut(element, duration = 200) {
-      element.style.transition = `opacity ${duration}ms ease-out`;
-      element.style.opacity = 0;
-    }
-
-    function fadeIn(element, duration = 200) {
-      element.style.transition = `opacity ${duration}ms ease-in`;
-      element.style.opacity = 1;
-    }
-    
-    // Re-render card content based on the current minPercentile.
-    // This function builds a new innerHTML string for the card in one go
-    // with words styled based on frequency.
-    function reRenderCard(card, minPercentile) {
-      if (!card.__partition__) return;
-      let html = "";
-      // Cache the global maximum and pre-calculate the logarithm divisor
-      const globalMaxFreq = globalSortedFrequencies[globalSortedFrequencies.length - 1];
-      const logDivisor = globalMaxFreq ? Math.log(globalMaxFreq + 1) : 1;
-      // Pre-calculate discrete styles for 4 categories with lighter greys for lowest frequencies.
-      const categories = [
-        { color: "rgb(200,200,200)", weight: 400 }, // lowest frequency: lighter grey
-        { color: "rgb(170,170,170)", weight: 500 },
-        { color: "rgb(120,120,120)", weight: 600 },
-        { color: "rgb(0,0,0)", weight: 700 }         // highest frequency
-      ];
       
-      card.__partition__.forEach((segmentObj, idx) => {
-        // Use the cached sortedFreqs to compute the local threshold.
-        const localThreshold = getPercentileValue(segmentObj.sortedFreqs, minPercentile);
-        // Filter words meeting the local threshold.
-        const filtered = segmentObj.words.filter(entry => entry.freq >= localThreshold);
-        if (filtered.length > 0) {
-          html += `<div class="segment">${segmentObj.digits}: `;
-          html += filtered.map(entry => {
-            const wordStr = entry.word.trim();
-            // Normalize frequency using cached logarithmic divisor.
-            let norm = Math.log(entry.freq + 1) / logDivisor;
-            // Determine category using new breakpoints.
-            let category = norm < 0.25 ? 0 : norm < 0.50 ? 1 : norm < 0.75 ? 2 : 3;
-            const catStyle = categories[category];
-            return `<span style="color: ${catStyle.color}; font-weight: ${catStyle.weight};">${wordStr}</span>`;
-          }).join(", ");
-          html += `</div>`;
-          if (idx < card.__partition__.length - 1) {
-            html += `<div class="plus">+</div>`;
-          }
+      memo[key] = result;
+      return result;
+    }
+    
+    function lexCount(i, R, s, m, remCost, memo = {}) {
+      const key = i + "," + R + "," + remCost;
+      if (key in memo) return memo[key];
+      
+      let count = 0;
+      if (i > s) {
+        count = (R === 0 && remCost === 0) ? 1 : 0;
+        memo[key] = count;
+        return count;
+      }
+      
+      for (let d = 1; d <= R - (s - i); d++) {
+        const cost_d = Math.pow(s * d - m, 2);
+        if (cost_d > remCost) continue;
+        count += lexCount(i + 1, R - d, s, m, remCost - cost_d, memo);
+      }
+      
+      memo[key] = count;
+      return count;
+    }
+    
+    function unrankLex(i, R, s, m, remCost, rank) {
+      if (i > s) {
+        if (R === 0 && remCost === 0) return [];
+        else throw new Error("Unranking error: no composition");
+      }
+      
+      for (let d = 1; d <= R - (s - i); d++) {
+        const cost_d = Math.pow(s * d - m, 2);
+        if (cost_d > remCost) continue;
+        const count = lexCount(i + 1, R - d, s, m, remCost - cost_d);
+        if (rank < count) {
+          return [d].concat(unrankLex(i + 1, R - d, s, m, remCost - cost_d, rank));
+        } else {
+          rank -= count;
         }
-      });
-      card.innerHTML = html;
-    }
-
-    // Replace the createCard function with this updated version
-    function createCard(partition, minPercentile) {
-      const card = document.createElement("div");
-      card.className = "result";
-      card.__partition__ = partition; // Store partition data for later updates
+      }
       
-      partition.forEach((segmentObj, idx) => {
-        // Create segment div
-        const segmentDiv = document.createElement("div");
-        segmentDiv.className = "segment";
-        card.appendChild(segmentDiv);
-        
-        // Add plus if not last segment
-        if (idx < partition.length - 1) {
-          const plusDiv = document.createElement("div");
-          plusDiv.className = "plus";
-          plusDiv.textContent = "+";
-          card.appendChild(plusDiv);
-        }
-      });
-      
-      // Initial update of content
-      reRenderCard(card, minPercentile);
-      return card;
+      throw new Error("Unranking error: rank too large");
     }
-
-    // Virtual scrolling constants: approximate height per card and extra buffer cards
-    const CARD_HEIGHT = 120; // approximate height in pixels (adjust as needed)
-    const BUFFER_COUNT = 5;  // extra cards to render above and below the viewport
     
-    // New function to render only the visible cards (virtual scroller)
-    function renderVisibleCards() {
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = "";
-      
-      // Use a simplified approach: we render only visible cards, with no spacer logic.
-      const currentMin = parseInt(minPercentileInput.value, 10);
-      const total = allPartitions.length;
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const windowHeight = window.innerHeight;
-      
-      // Compute the first visible index based solely on scrollTop.
-      let firstVisibleIndex = Math.floor(scrollTop / CARD_HEIGHT);
-      firstVisibleIndex = Math.max(0, firstVisibleIndex);
-      
-      // Determine the number of cards to render based on window height and some buffer.
-      const visibleCount = Math.ceil(windowHeight / CARD_HEIGHT) + 2 * BUFFER_COUNT;
-      const lastVisibleIndex = Math.min(total, firstVisibleIndex + visibleCount);
-      
-      // Debug logging.
-      console.log("New scroll debug:",
-         "scrollTop:", scrollTop,
-         "Total Cards:", total,
-         "Visible Cards:", (lastVisibleIndex - firstVisibleIndex),
-         "First Visible Index:", firstVisibleIndex);
-      
-      // Render only the visible partitions.
-      for (let i = firstVisibleIndex; i < lastVisibleIndex; i++) {
-          const partition = allPartitions[i];
-          const card = createCard(partition, currentMin);
-          card.dataset.cardIndex = i;
-          resultsDiv.appendChild(card);
+    function binom(n, k) {
+      if (k < 0 || k > n) return 0;
+      let num = 1, den = 1;
+      for (let i = 1; i <= k; i++) {
+        num *= (n - i + 1);
+        den *= i;
       }
+      return num / den;
     }
-
-    // Update the filter threshold on slider move while preserving scroll position.
-    minPercentileInput.addEventListener("input", () => {
-      minPercentileDisplay.textContent = `${minPercentileInput.value}%`;
-      const newMin = parseInt(minPercentileInput.value, 10);
-
-      // Locate the pinned card: choose the topmost card whose top is visible (or just above)
-      let pinnedCard = null;
-      let bestVisible = Number.POSITIVE_INFINITY;
-      let bestAbove = Number.NEGATIVE_INFINITY;
-      document.querySelectorAll('.result').forEach(card => {
-         const rect = card.getBoundingClientRect();
-         if (rect.top >= 0 && rect.top < bestVisible) {
-             bestVisible = rect.top;
-             pinnedCard = card;
-         } else if (rect.top < 0 && rect.top > bestAbove) {
-             bestAbove = rect.top;
-             pinnedCard = card;
-         }
-      });
-      // Save the pinned card's index (dataset attribute) and its current relative top.
-      const pinnedIndex = pinnedCard ? pinnedCard.dataset.cardIndex : null;
-      const pinnedRelative = pinnedCard ? pinnedCard.getBoundingClientRect().top : 0;
-
-      // Re-render visible cards completely (which uses the current newMin frequency).
-      renderVisibleCards();
-
-      // After re-rendering, locate the card with the same dataset index.
-      if (pinnedIndex !== null) {
-         const newPinnedCard = Array.from(document.querySelectorAll('.result'))
-            .find(card => card.dataset.cardIndex === pinnedIndex);
-         if (newPinnedCard) {
-             const newRelative = newPinnedCard.getBoundingClientRect().top;
-             const delta = newRelative - pinnedRelative;
-             if (Math.abs(delta) > 0) {
-                 window.scrollBy(0, delta);
-             }
-         }
-      }
-    });
-
-    // Global variables.
-    let dict = {};
-    let allPartitions = [];
-    let currentGenerationToken = 0; // NEW: token for cancellation of previous async generation
     
     // NEW: Global sorted frequencies from the dictionary and bolding threshold.
     let globalSortedFrequencies = [];
@@ -526,19 +595,30 @@
 
     // NEW: Asynchronous initialization that binds UI events immediately
     document.addEventListener("DOMContentLoaded", () => {
-      // Prefill inputs from URL hash parameters if present.
+      const numericInput = document.getElementById("numericInput");
+      const freqSelect = document.getElementById("freqSelect");
+      const modal = document.getElementById("explanationModal");
+      const helpBtn = document.getElementById("helpBtn");
+      const closeBtn = document.getElementById("closeModal");
+      
+      // Store the desired partition for later use
+      let desiredPartition = null;
+      
+      // Initialize from URL hash if present
       if (window.location.hash) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         if (hashParams.has("n")) {
           numericInput.value = hashParams.get("n");
         }
         if (hashParams.has("minPercentile")) {
-          minPercentileInput.value = hashParams.get("minPercentile");
-          minPercentileDisplay.textContent = `${hashParams.get("minPercentile")}%`;
+          freqSelect.value = hashParams.get("minPercentile");
+        }
+        if (hashParams.has("p")) {
+          desiredPartition = hashParams.get("p");
         }
       }
       
-      // Bind the numeric input event listener immediately.
+      // Event listeners
       numericInput.addEventListener("input", () => {
         updateUrl();
         const trimmed = numericInput.value.trim();
@@ -547,12 +627,24 @@
           document.getElementById("results").innerHTML = "";
           return;
         }
-        if (dict) {  // Only generate partitions if the dictionary is loaded.
-          generateAndRenderPartitions(trimmed);
+        if (dict) {
+          generateAndRenderPartitions(trimmed, desiredPartition);
         }
       });
       
-      // Asynchronously load the dictionary and then perform frequency computations.
+      freqSelect.addEventListener("change", () => {
+        updateUrl();
+        renderCurrentCard();
+      });
+      
+      // Modal controls
+      helpBtn.onclick = () => modal.style.display = "block";
+      closeBtn.onclick = () => modal.style.display = "none";
+      window.onclick = (e) => {
+        if (e.target === modal) modal.style.display = "none";
+      }
+      
+      // Load dictionary and initialize
       loadDictionary()
         .then((data) => {
           dict = data;
@@ -561,39 +653,50 @@
         .then((sortedFreqs) => {
           globalSortedFrequencies = sortedFreqs;
           boldThreshold = getPercentileValue(globalSortedFrequencies, 90);
-          // If a prefilled numeric input exists, start generation now.
           if (numericInput.value.trim()) {
             updateUrl();
-            generateAndRenderPartitions(numericInput.value.trim());
+            generateAndRenderPartitions(numericInput.value.trim(), desiredPartition);
           }
         });
     });
 
-    // Additional code: toggle compact mode for the sticky control area
-    const inputGroup = document.querySelector('.input-group');
-    function checkSticky() {
-        // When the top of inputGroup is at or above 0, add compact class.
-        if (inputGroup.getBoundingClientRect().top <= 0) {
-            inputGroup.classList.add('compact');
-        } else {
-            inputGroup.classList.remove('compact');
-        }
+    // Update updateUrl function
+    function updateUrl() {
+      const state = {
+        n: numericInput.value.trim(),
+        minPercentile: freqSelect.value
+      };
+      if (allPartitions.length > 0) {
+        state.p = allPartitions[currentIndex].map(segment => segment.digits).join("_");
+      }
+      const hash = new URLSearchParams(state).toString();
+      history.replaceState(null, "", "#" + hash);
     }
-    window.addEventListener('scroll', checkSticky, { passive: true });
-    checkSticky(); // Run an initial check in case page load already places it at top.
 
-    // NEW: Lazy synchronous generator that yields partitions one by one.
-    function* lazyPartitionsGenerator(numStr, dict) {
-      const n = numStr.length;
-      // For every possible number of splits (s)
-      for (let s = 0; s <= n - 1; s++) {
-        for (const parts of generatePartitions(numStr, s)) {
-          let valid = true;
+    // Updated: Async generation function for partitions in chunks.
+    async function generateAndRenderPartitions(numStr, desiredPartition = null) {
+      currentGenerationToken++;
+      const myToken = currentGenerationToken;
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "";
+      allPartitions = [];
+  
+      // Get all partitions at once using the new balanced generator
+      const partitions = generatePartitions(numStr);
+      
+      // Process partitions in batches
+      const batchSize = 5;
+      for (let i = 0; i < partitions.length; i += batchSize) {
+        if (currentGenerationToken !== myToken) return;
+        
+        const batch = partitions.slice(i, i + batchSize);
+        for (const parts of batch) {
           const segmentObjects = [];
+          let valid = true;
+          
           for (const seg of parts) {
             if (dict[seg]) {
               const words = dict[seg];
-              // Calculate and cache the sorted frequency array.
               const sortedFreqs = words.map(entry => entry.freq).sort((a, b) => a - b);
               segmentObjects.push({ digits: seg, words, sortedFreqs });
             } else {
@@ -601,69 +704,140 @@
               break;
             }
           }
+          
           if (valid) {
-            yield segmentObjects;
+            allPartitions.push(segmentObjects);
           }
         }
+        
+        // Only render if we're not seeking a specific partition
+        if (!desiredPartition) {
+          renderCurrentCard();
+        }
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      // After all partitions are generated, find the desired one if specified
+      if (desiredPartition) {
+        const idx = allPartitions.findIndex(part => 
+          part.map(segment => segment.digits).join("_") === desiredPartition
+        );
+        currentIndex = (idx >= 0) ? idx : 0;
+      } else {
+        currentIndex = 0;
+      }
+
+      renderCurrentCard();
+      updateUrl();
+    }
+
+    let currentIndex = 0;
+
+    // NEW: Create a card element for a given partition and update its content.
+    function createCard(partition, minPercentile) {
+      const card = document.createElement("div");
+      card.className = "result";
+      card.__partition__ = partition; // store partition data for later updates
+      reRenderCard(card, minPercentile);
+      return card;
+    }
+    
+    // NEW: Update the card's HTML based on the partition and frequency threshold.
+    function reRenderCard(card, minPercentile) {
+      let html = "";
+      let hasOutput = false;
+      // Cache the global maximum and pre-calculate the logarithm divisor.
+      const globalMaxFreq = globalSortedFrequencies[globalSortedFrequencies.length - 1];
+      const logDivisor = globalMaxFreq ? Math.log(globalMaxFreq + 1) : 1;
+      // Define discrete styles for 4 frequency categories.
+      const categories = [
+        { color: "rgb(200,200,200)", weight: 400 },
+        { color: "rgb(170,170,170)", weight: 500 },
+        { color: "rgb(120,120,120)", weight: 600 },
+        { color: "rgb(0,0,0)",     weight: 700 }
+      ];
+      
+      card.__partition__.forEach((segmentObj, idx) => {
+        const localThreshold = getPercentileValue(segmentObj.sortedFreqs, minPercentile);
+        const filtered = segmentObj.words.filter(entry => entry.freq >= localThreshold);
+        if (filtered.length > 0) {
+          hasOutput = true;
+          html += `<div class="segment">${segmentObj.digits}: `;
+          html += filtered.map(entry => {
+            const wordStr = entry.word.trim();
+            let norm = Math.log(entry.freq + 1) / logDivisor;
+            let cat = norm < 0.25 ? 0 : norm < 0.50 ? 1 : norm < 0.75 ? 2 : 3;
+            const catStyle = categories[cat];
+            return `<span style="color: ${catStyle.color}; font-weight: ${catStyle.weight};">${wordStr}</span>`;
+          }).join(", ");
+          html += `</div>`;
+          if (idx < card.__partition__.length - 1) {
+            html += `<div class="plus">+</div>`;
+          }
+        }
+      });
+      if (!hasOutput) {
+         // No valid words were found. Show grey background and message.
+         card.style.backgroundColor = "#ccc";
+         card.innerHTML = `<div style="text-align: center; font-style: italic; padding: 2rem;">
+                             No possibilities found.<br>
+                             Try broadening your word frequency filter.
+                           </div>`;
+      } else {
+         // Restore default background if valid output is present.
+         card.style.backgroundColor = "";
+         card.innerHTML = html;
       }
     }
 
-    // New function: updateUrl using hash parameters instead of query parameters.
-    function updateUrl() {
-      const state = {
-        n: numericInput.value.trim(),
-        minPercentile: minPercentileInput.value
-      };
-      const hash = new URLSearchParams(state).toString();
-      history.replaceState(null, "", "#" + hash);
-    }
-
-    // Update visible cards on scroll (only render cards that are presently visible)
-    window.addEventListener("scroll", () => {
-       requestAnimationFrame(renderVisibleCards);
-    });
-
-    // Helper function to check if a partition produces any output at a given frequency threshold.
-    function hasOutput(partition, minPercentile) {
-       for (let seg of partition) {
-           const localThreshold = getPercentileValue(seg.sortedFreqs, minPercentile);
-           const filtered = seg.words.filter(entry => entry.freq >= localThreshold);
-           if (filtered.length > 0) return true;
-       }
-       return false;
-    }
-
-    // Updated: Async generation function for partitions in chunks.
-    async function generateAndRenderPartitions(numStr) {
-      currentGenerationToken++;
-      const myToken = currentGenerationToken;
+    function renderCurrentCard() {
       const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = ""; // clear UI
-      allPartitions = [];
-
-      // Get a lazy iterator of partitions.
-      const iterator = lazyPartitionsGenerator(numStr, dict);
-
-      // Process a small batch (e.g., 5 partitions) at a time.
-      const batchSize = 5;
-      function processBatch() {
-        if (currentGenerationToken !== myToken) return;
-        let count = 0;
-        let next;
-        while (count < batchSize && !(next = iterator.next()).done) {
-          allPartitions.push(next.value);
-          count++;
-        }
-
-        debouncedRenderVisibleCards();
-
-        if (!next.done) {
-          setTimeout(processBatch, 0);
-        }
+      resultsDiv.innerHTML = "";
+      if (allPartitions.length === 0) {
+        resultsDiv.innerHTML = `
+          <div class="instruction" style="text-align:center; padding:1rem;">
+            <p>Hello there, adventurer!</p>
+            <p>Type a number above to conjure a magical mnemonic card.</p>
+            <p>Your word wizardry will appear here once you've entered some digits. Have fun!</p>
+          </div>
+        `;
+        return;
       }
-
-      processBatch();
+      const currentMin = parseInt(freqSelect.value, 10);
+      const card = createCard(allPartitions[currentIndex], currentMin);
+      resultsDiv.appendChild(card);
     }
+
+    function nextCard() {
+      if (allPartitions.length === 0) return;
+      currentIndex = (currentIndex + 1) % allPartitions.length;
+      renderCurrentCard();
+      updateUrl();
+    }
+
+    function prevCard() {
+      if (allPartitions.length === 0) return;
+      currentIndex = (currentIndex - 1 + allPartitions.length) % allPartitions.length;
+      renderCurrentCard();
+      updateUrl();
+    }
+
+    // Attach event listeners for navigation buttons
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("prevBtn").addEventListener("click", prevCard);
+      document.getElementById("nextBtn").addEventListener("click", nextCard);
+
+      // Keyboard navigation: Left/Right arrows and PageUp/PageDown.
+      document.addEventListener("keydown", (e) => {
+         if (["ArrowRight", "PageDown"].includes(e.key)) {
+             e.preventDefault();
+             nextCard();
+         } else if (["ArrowLeft", "PageUp"].includes(e.key)) {
+             e.preventDefault();
+             prevCard();
+         }
+      });
+    });
   </script>
 </body>
 </html>
