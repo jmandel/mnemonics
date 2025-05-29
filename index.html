@@ -2,434 +2,412 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mnemonics</title>
+  <title>Mnemonic Explorer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Use a whimsical font inspired by Lewis Carroll -->
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Alice&display=swap" rel="stylesheet">
   <style>
-    html {
-      font-size: 16px;
-    }
-
-    html, body {
-      height: 100%;
-      width: 100%;
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      overflow: hidden;  /* prevent any scrolling on the body */
     }
 
     body {
-      display: grid;
-      grid-template-rows: 3.75rem 1fr 3.75rem;
-      height: 100dvh;
-      margin: 0;
-      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
       overflow: hidden;
-      background: #f8f9fa;
-      color: #212529;
-      font-family: 'Alice', serif;
-      line-height: 1.4;
-      font-size: 1rem;  /* Will scale with html font-size */
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      display: grid;
-      /* Grid rows: exactly 100dvh */
-      grid-template-rows: 3dvh 94dvh 3dvh;
-      gap: 0;
-      height: 100%;
-      padding: 0 0.5rem;
-    }
-    h1 {
-      text-align: center;
-      font-size: 2rem; /* smaller header size */
-      margin: 0;
-      color: #5d4037;
-      text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.15); /* whimsical shadow effect */
-    }
-    .input-group {
+      height: 100vh;
       display: flex;
-      flex-direction: column; /* stack the two controls vertically */
-      gap: 0;
-      justify-content: center;
-      background: #fbf6f0;
-      padding: 0;
-      transition: padding 0.2s, font-size 0.2s;
-      font-size: 0.75rem;        /* slightly smaller font size */
-      height: 3dvh;              /* Changed from vh to dvh */
+      flex-direction: column;
     }
-    .input-group > div {
-      flex: 1 1 auto;
+
+    /* Header */
+    .header {
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      padding: 0.75rem;
       display: flex;
-      flex-direction: row;
+      gap: 0.75rem;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .header input {
+      flex: 1;
+      max-width: 300px;
+      padding: 0.5rem 1rem;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: white;
+      font-size: 1.1rem;
+      font-family: monospace;
+    }
+
+    .header input:focus {
+      outline: none;
+      border-color: #4a9eff;
+      box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+    }
+
+    .stats {
+      font-size: 0.9rem;
+      color: #888;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .stat {
+      display: flex;
       align-items: center;
       gap: 0.25rem;
     }
-    .input-group label {
-      font-size: 0.9rem;
-      margin-bottom: 0;
-      margin-right: 0.25rem;
-      color: #3e2723;
-      white-space: nowrap; /* Prevent label text from wrapping */
-    }
-    .input-group input {
-      font-size: 1rem;
-      padding: 0.6rem;
-      border: 1px solid #5d4037; /* refined vintage border */
-      background: #fff;
-      color: #3e2723;
-      border-radius: 8px; /* more whimsical rounded corners */
-      box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-      width: 100%;
-      box-sizing: border-box;
-    }
-    /* Results: display one card centered */
-    #results {
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      overflow: hidden;
-      width: 100%;
-      height: 100%;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    /* Navigation controls for Prev/Next buttons */
-    .nav-controls {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      height: 3dvh;         /* Changed from vh to dvh */
-      align-items: center;
-    }
-    .nav-controls button {
-      padding: 0.1rem 0.5rem;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    /* Each partition container uses flexbox in column direction */
-    .result {
-      width: 100%;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 1.5rem;
-      background: white;
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    .result::before,
-    .result::after {
-      display: none;
-      content: none;
-    }
-    /* Each segment appears as a full-width row */
-    .segment {
-      padding: 1rem;
-      margin-bottom: 1rem;
-      background: #f1f8ff;
-      border-radius: 4px;
-      font-size: 1.1rem;  /* Will scale with zoom */
-      color: #1864ab;
-    }
-    .segment::before,
-    .segment::after {
-      display: none;
-      content: none;
-    }
-    /* The plus sign appears on its own line, centered */
-    .plus {
-      text-align: center;
-      font-size: 1.5rem;  /* Will scale with zoom */
-      color: #868e96;
-      margin: 0.5rem 0;
-      content: "+";
-    }
-    .plus::before,
-    .plus::after {
-      display: none;
-      content: none;
-    }
-    /* Explanation area styling */
-    .explanation {
-      border-top: 3px double #8d6e63; /* softer, whimsical tone */
-      padding-top: 0.5rem; /* reduced padding for denser layout */
-      font-size: 0.95rem;
-      line-height: 1.5;
-      color: #4e342e;
-    }
-    .explanation h2 {
-      text-align: center;
-      font-size: 1.75rem;
-      margin-bottom: 0.25rem; /* reduced margin */
-      color: #5d4037;
-    }
-    .mapping-table {
-      width: 100%;
-      max-width: 600px;
-      margin: 1rem auto;
-      border-collapse: collapse;
-      background: white;
-    }
-    .mapping-table th {
-      background: #4dabf7;
-      color: white;
-      padding: 0.75rem;
-      text-align: left;
-    }
-    .mapping-table td {
-      padding: 0.75rem;
-      border: 1px solid #dee2e6;
-      color: #495057;
-    }
-    .mapping-table tr:nth-child(even) {
-      background: #f8f9fa;
-    }
-    /* Update header styles to be a single flexbox */
-    .header {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 0.75rem;
-      background: white;
-      border-bottom: 1px solid #dee2e6;
+
+    .stat-value {
+      color: #4a9eff;
+      font-weight: 600;
     }
 
-    /* Remove nested header-content and input-controls */
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.75rem;
-    }
-
-    /* Style the inputs directly */
-    .header input[type="number"] {
-      flex: 3;  /* Takes up more space */
-      padding: 0.5rem;
-      border: 1px solid #ced4da;
-      border-radius: 4px;
-      background: white;
-      font-family: inherit;
-      font-size: 1rem;
-      color: #212529;
-      transition: all 0.2s ease;
-    }
-
-    .header select {
-      flex: 2;  /* Takes up less space than the number input */
-      padding: 0.5rem;
-      border: 1px solid #ced4da;
-      border-radius: 4px;
-      background: white;
-      font-family: inherit;
-      font-size: 1rem;
-      color: #212529;
-      transition: all 0.2s ease;
-    }
-
-    /* Keep help icon styles mostly the same but adjust flex */
-    .help-icon {
-      flex: 0 0 2.5rem;  /* Fixed width, doesn't grow or shrink */
-      height: 2.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #4dabf7;
-      color: white;
-      border-radius: 4px;
-      font-size: 1.2rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    /* Main content area */
-    #results {
+    /* Main container */
+    .main {
+      flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
+      padding: 1rem;
+      background: #0f0f0f;
     }
 
-    /* Footer styles */
-    .footer {
+    /* Partition list */
+    .partitions {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      gap: 2px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Each partition row */
+    .partition {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
       align-items: center;
-      gap: 1rem;
-      background: white;
-      border-top: 1px solid #dee2e6;
-      padding: 0.75rem;
-    }
-
-    .footer button {
-      padding: 0.5rem 1.5rem;
-      font-family: inherit;
-      font-size: 1rem;  /* Will scale with zoom */
-      color: white;
-      background: #4dabf7;
-      border: none;
-      border-radius: 4px;
+      gap: 0.75rem;
+      transition: all 0.15s ease;
       cursor: pointer;
-      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
     }
 
-    .footer button:hover {
-      background: #3b8fd5;
+    .partition:hover {
+      background: #222;
+      border-color: #3a3a3a;
+      transform: translateX(2px);
     }
 
-    /* Modal for explanation */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
+    .partition.selected {
+      background: #1a2332;
+      border-color: #2a4a6a;
+      box-shadow: 0 0 0 1px rgba(74, 158, 255, 0.3);
+    }
+
+    /* Quality indicator */
+    .quality {
+      width: 4px;
+      height: 100%;
+      position: absolute;
       left: 0;
-      width: 100vw;
-      height: 100dvh; /* Changed from vh to dvh */
-      background: rgba(0, 0, 0, 0.5);
+      top: 0;
+      background: linear-gradient(to bottom, 
+        var(--quality-color) 0%, 
+        var(--quality-color) var(--quality-percent), 
+        transparent var(--quality-percent));
+    }
+
+    /* Partition segments */
+    .segments {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .segment {
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
+
+    .digits {
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: 600;
+    }
+
+    .words {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      align-items: baseline;
+    }
+
+    .word {
+      transition: all 0.15s ease;
+    }
+
+    /* Word frequency coloring */
+    .word-rare { color: #555; font-size: 0.85rem; }
+    .word-uncommon { color: #888; font-size: 0.9rem; }
+    .word-common { color: #bbb; font-size: 0.95rem; }
+    .word-frequent { color: #fff; font-size: 1rem; font-weight: 500; }
+
+    .partition:hover .word-frequent {
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+
+    .plus {
+      color: #444;
+      font-size: 1rem;
+      padding: 0 0.2rem;
+    }
+
+    /* Metrics */
+    .metrics {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .metric {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    .metric-value {
+      color: #999;
+      font-weight: 600;
+    }
+
+    /* Loading and empty states */
+    .loading, .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #666;
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-left: 0.5rem;
+      border: 2px solid #444;
+      border-radius: 50%;
+      border-top-color: #4a9eff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Scrollbar styling */
+    .main::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .main::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+
+    .main::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 5px;
+    }
+
+    .main::-webkit-scrollbar-thumb:hover {
+      background: #444;
+    }
+
+    /* Help tooltip */
+    .help {
+      position: relative;
+      cursor: help;
+      color: #666;
+      font-size: 0.9rem;
+      padding: 0.25rem 0.5rem;
+      border: 1px solid #333;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .help:hover {
+      color: #999;
+      border-color: #444;
+    }
+
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      right: 0;
+      margin-bottom: 0.5rem;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 1rem;
+      width: 300px;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       z-index: 1000;
     }
 
-    .modal-content {
-      position: relative;
-      background: white;
-      margin: 2rem auto;
-      padding: 2rem;
-      max-width: 800px;
-      max-height: 80vh;
-      overflow-y: auto;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    .help:hover .tooltip {
+      display: block;
     }
 
-    .modal-content h2 {
-      text-align: center;
-      color: #1864ab;
-      margin-bottom: 1.5rem;
+    .tooltip h3 {
+      margin-bottom: 0.5rem;
+      color: #4a9eff;
     }
 
-    .modal-content h2::before,
-    .modal-content h2::after {
-      display: none;
-      content: none;
+    .tooltip p {
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #ccc;
+      margin-bottom: 0.5rem;
     }
 
-    .modal-close {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
+    /* Filter controls */
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .filter-btn {
+      padding: 0.25rem 0.75rem;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #999;
+      font-size: 0.85rem;
       cursor: pointer;
-      font-size: 1.5rem;  /* Will scale with zoom */
-      content: "X";
+      transition: all 0.15s ease;
     }
 
-    /* Update instruction styles */
-    .instruction {
-      text-align: center;
-      padding: 2rem;
-      background: white;
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      color: #495057;
-      font-size: 1.1rem;  /* Will scale with zoom */
-      line-height: 1.6;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    .filter-btn:hover {
+      background: #333;
+      color: #ccc;
+    }
+
+    .filter-btn.active {
+      background: #2a4a6a;
+      border-color: #4a9eff;
+      color: #4a9eff;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      .header {
+        flex-wrap: wrap;
+      }
+      
+      .partition {
+        padding: 0.4rem 0.6rem;
+      }
+      
+      .segments {
+        font-size: 0.85rem;
+      }
+      
+      .metrics {
+        display: none;
+      }
     }
   </style>
 </head>
 <body>
   <header class="header">
-    <input type="number" id="numericInput" placeholder="Enter numeric string..." autofocus>
-    <select id="freqSelect">
-      <option value="95">High Freq</option>
-      <option value="80" selected>Med Freq</option>
-      <option value="50">Low Freq</option>
-    </select>
-    <div class="help-icon" id="helpBtn">?</div>
+    <input type="text" id="numInput" placeholder="Enter number..." autofocus>
+    
+    <div class="filters">
+      <button class="filter-btn active" data-sort="quality">Best First</button>
+      <button class="filter-btn" data-sort="length">Shortest First</button>
+      <button class="filter-btn" data-sort="balanced">Most Balanced</button>
+    </div>
+    
+    <div class="stats">
+      <div class="stat">
+        <span>Partitions:</span>
+        <span class="stat-value" id="partitionCount">0</span>
+      </div>
+      <div class="stat">
+        <span>Valid:</span>
+        <span class="stat-value" id="validCount">0</span>
+      </div>
+    </div>
+    
+    <div class="help">
+      ?
+      <div class="tooltip">
+        <h3>Mnemonic System</h3>
+        <p>Numbers → Consonants → Words</p>
+        <p>0=S/Z, 1=T/D, 2=N, 3=M, 4=R, 5=L, 6=CH/SH, 7=K/G, 8=F/V, 9=P/B</p>
+        <p>Brighter words are more common. Click any partition to copy.</p>
+      </div>
+    </div>
   </header>
 
-  <main id="results"></main>
-
-  <footer class="footer">
-    <button id="prevBtn">← Previous</button>
-    <button id="nextBtn">Next →</button>
-  </footer>
-
-  <!-- Add modal for explanation -->
-  <div id="explanationModal" class="modal">
-    <div class="modal-content">
-      <span class="modal-close" id="closeModal">&times;</span>
-      <!-- Move the existing explanation content here -->
-      <h2>About the System</h2>
-      <p>
-        Our system uses a classic mnemonic technique where numbers are transformed into consonant sounds.
-        Each digit stands for one or more consonant sounds according to a traditional mapping.
-        Vowels and extra letters can then be added freely to form full words, making it easier to remember the digits.
-      </p>
-      <p>The table below shows the mapping between digits and the consonant sounds they represent:</p>
-      <table class="mapping-table">
-        <thead>
-          <tr>
-            <th>Digit</th>
-            <th>Consonant Sounds</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>0</td><td>S, Z</td></tr>
-          <tr><td>1</td><td>T, D, TH, DH</td></tr>
-          <tr><td>2</td><td>N</td></tr>
-          <tr><td>3</td><td>M</td></tr>
-          <tr><td>4</td><td>R</td></tr>
-          <tr><td>5</td><td>L</td></tr>
-          <tr><td>6</td><td>CH, JH, SH, ZH</td></tr>
-          <tr><td>7</td><td>K, G, NG</td></tr>
-          <tr><td>8</td><td>F, V</td></tr>
-          <tr><td>9</td><td>P, B</td></tr>
-        </tbody>
-      </table>
-      <p>
-        Once you enter your numbers, our generator explores all possible ways to split the sequence.
-        It then searches a dictionary for words whose consonant patterns match the digits you provided.
-        The slider above lets you filter the results by word frequency, so you can focus on the words that best help you remember.
-      </p>
+  <main class="main" id="results">
+    <div class="empty">
+      Enter a number to explore mnemonic possibilities
     </div>
-  </div>
-  
+  </main>
+
   <script type="module">
-    // Global Variables
+    // Dictionary and state
     let dict = {};
-    let allPartitions = [];
-    let currentGenerationToken = 0;
+    let currentPartitions = [];
+    let currentSort = 'quality';
     
-    // --- Mnemonic Generator Implementation ---
-    // This implementation loads a preprocessed JSON dictionary (cmudict.json)
-    // and streams valid partitions using an asynchronous generator.
-    
+    // Load dictionary
     async function loadDictionary() {
       const response = await fetch("cmudict.json");
-      const data = await response.json();
-      return data;
+      return await response.json();
     }
     
-    // Compute a global sorted array of frequencies from the dictionary.
-    async function computeGlobalFrequencies(dict) {
-      let freqs = [];
+    // Frequency percentiles for word classification
+    let freqPercentiles = {};
+    
+    async function computeFrequencyPercentiles(dict) {
+      const allFreqs = [];
       for (const key in dict) {
         for (const entry of dict[key]) {
-          freqs.push(entry.freq);
+          allFreqs.push(entry.freq);
         }
       }
-      freqs.sort((a, b) => a - b); // ascending order
-      return freqs;
+      allFreqs.sort((a, b) => a - b);
+      
+      return {
+        p25: allFreqs[Math.floor(allFreqs.length * 0.25)],
+        p50: allFreqs[Math.floor(allFreqs.length * 0.50)],
+        p75: allFreqs[Math.floor(allFreqs.length * 0.75)],
+        p90: allFreqs[Math.floor(allFreqs.length * 0.90)],
+        max: allFreqs[allFreqs.length - 1]
+      };
     }
     
-    // Get the value at the given percentile (0-100) from a sorted array.
-    function getPercentileValue(sortedArray, percentile) {
-      const index = Math.floor((percentile / 100) * (sortedArray.length - 1));
-      return sortedArray[index];
-    }
-    
-    // Replace the generatePartitions function with this new version
+    // Generate all partitions using balanced approach
     function generatePartitions(numStr) {
       const items = numStr.split('');
       const n = items.length;
@@ -438,17 +416,16 @@
       
       for (let j = 0; j < totalPartitions; j++) {
         const partition = nthPartitionBalanced(j, items);
-        // Convert partition format to match existing code
         partitions.push(partition.map(seg => seg.join('')));
       }
       
       return partitions;
     }
     
-    // Add the new helper functions for balanced partitions
+    // Helper functions for balanced partition generation
     function nthPartitionBalanced(j, items) {
       const m = items.length;
-      const n = m - 1; // possible breakpoints
+      const n = m - 1;
       let total = 0;
       let chosenK = null;
       let localRank = null;
@@ -458,13 +435,9 @@
         if (j < total + count) {
           chosenK = k;
           localRank = j - total;
-              break;
+          break;
         }
         total += count;
-      }
-      
-      if (chosenK === null) {
-        throw new Error("j is too large for list length " + m);
       }
       
       const breakpoints = unrankBalancedForK(chosenK, m, localRank);
@@ -479,7 +452,6 @@
       return partition;
     }
     
-    // Add all the supporting functions
     function unrankBalancedForK(k, m, rank) {
       const s = k + 1;
       const comp = unrankComposition(s, m, rank);
@@ -505,10 +477,6 @@
           break;
         }
         rank -= costMap[c];
-      }
-      
-      if (bucket === null) {
-        throw new Error("Rank is too high in unrankComposition");
       }
       
       return unrankLex(1, m, s, m, bucket, rank);
@@ -562,7 +530,7 @@
     function unrankLex(i, R, s, m, remCost, rank) {
       if (i > s) {
         if (R === 0 && remCost === 0) return [];
-        else throw new Error("Unranking error: no composition");
+        else throw new Error("Unranking error");
       }
       
       for (let d = 1; d <= R - (s - i); d++) {
@@ -576,7 +544,7 @@
         }
       }
       
-      throw new Error("Unranking error: rank too large");
+      throw new Error("Unranking error");
     }
     
     function binom(n, k) {
@@ -589,253 +557,196 @@
       return num / den;
     }
     
-    // NEW: Global sorted frequencies from the dictionary and bolding threshold.
-    let globalSortedFrequencies = [];
-    let boldThreshold = 0;
-
-    // NEW: Asynchronous initialization that binds UI events immediately
-    document.addEventListener("DOMContentLoaded", () => {
-      const numericInput = document.getElementById("numericInput");
-      const freqSelect = document.getElementById("freqSelect");
-      const modal = document.getElementById("explanationModal");
-      const helpBtn = document.getElementById("helpBtn");
-      const closeBtn = document.getElementById("closeModal");
+    // Process and score partitions
+    function processPartitions(numStr) {
+      const allPartitions = generatePartitions(numStr);
+      const validPartitions = [];
       
-      // Store the desired partition for later use
-      let desiredPartition = null;
-      
-      // Initialize from URL hash if present
-      if (window.location.hash) {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        if (hashParams.has("n")) {
-          numericInput.value = hashParams.get("n");
-        }
-        if (hashParams.has("minPercentile")) {
-          freqSelect.value = hashParams.get("minPercentile");
-        }
-        if (hashParams.has("p")) {
-          desiredPartition = hashParams.get("p");
-        }
-      }
-      
-      // Event listeners
-      numericInput.addEventListener("input", () => {
-        updateUrl();
-        const trimmed = numericInput.value.trim();
-        if (trimmed === "") {
-          allPartitions = [];
-          document.getElementById("results").innerHTML = "";
-          return;
-        }
-        if (dict) {
-          generateAndRenderPartitions(trimmed, desiredPartition);
-        }
-      });
-      
-      freqSelect.addEventListener("change", () => {
-        updateUrl();
-        renderCurrentCard();
-      });
-      
-      // Modal controls
-      helpBtn.onclick = () => modal.style.display = "block";
-      closeBtn.onclick = () => modal.style.display = "none";
-      window.onclick = (e) => {
-        if (e.target === modal) modal.style.display = "none";
-      }
-      
-      // Load dictionary and initialize
-      loadDictionary()
-        .then((data) => {
-          dict = data;
-          return computeGlobalFrequencies(dict);
-        })
-        .then((sortedFreqs) => {
-          globalSortedFrequencies = sortedFreqs;
-          boldThreshold = getPercentileValue(globalSortedFrequencies, 90);
-          if (numericInput.value.trim()) {
-            updateUrl();
-            generateAndRenderPartitions(numericInput.value.trim(), desiredPartition);
-          }
-        });
-    });
-
-    // Update updateUrl function
-    function updateUrl() {
-      const state = {
-        n: numericInput.value.trim(),
-        minPercentile: freqSelect.value
-      };
-      if (allPartitions.length > 0) {
-        state.p = allPartitions[currentIndex].map(segment => segment.digits).join("_");
-      }
-      const hash = new URLSearchParams(state).toString();
-      history.replaceState(null, "", "#" + hash);
-    }
-
-    // Updated: Async generation function for partitions in chunks.
-    async function generateAndRenderPartitions(numStr, desiredPartition = null) {
-      currentGenerationToken++;
-      const myToken = currentGenerationToken;
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = "";
-      allPartitions = [];
-  
-      // Get all partitions at once using the new balanced generator
-      const partitions = generatePartitions(numStr);
-      
-      // Process partitions in batches
-      const batchSize = 5;
-      for (let i = 0; i < partitions.length; i += batchSize) {
-        if (currentGenerationToken !== myToken) return;
+      for (const parts of allPartitions) {
+        const segments = [];
+        let valid = true;
+        let totalScore = 0;
+        let wordCount = 0;
         
-        const batch = partitions.slice(i, i + batchSize);
-        for (const parts of batch) {
-          const segmentObjects = [];
-          let valid = true;
-          
-          for (const seg of parts) {
-            if (dict[seg]) {
-              const words = dict[seg];
-              const sortedFreqs = words.map(entry => entry.freq).sort((a, b) => a - b);
-              segmentObjects.push({ digits: seg, words, sortedFreqs });
-            } else {
-              valid = false;
-              break;
-            }
-          }
-          
-          if (valid) {
-            allPartitions.push(segmentObjects);
+        for (const seg of parts) {
+          if (dict[seg]) {
+            const words = dict[seg];
+            // Take top words by frequency
+            const topWords = words
+              .sort((a, b) => b.freq - a.freq)
+              .slice(0, 8); // Limit display
+            
+            segments.push({
+              digits: seg,
+              words: topWords,
+              bestFreq: topWords[0]?.freq || 0
+            });
+            
+            totalScore += topWords[0]?.freq || 0;
+            wordCount += topWords.length;
+          } else {
+            valid = false;
+            break;
           }
         }
         
-        // Only render if we're not seeking a specific partition
-        if (!desiredPartition) {
-          renderCurrentCard();
+        if (valid) {
+          // Calculate quality metrics
+          const avgScore = totalScore / segments.length;
+          const balance = 1 - (Math.max(...parts.map(p => p.length)) - Math.min(...parts.map(p => p.length))) / numStr.length;
+          
+          validPartitions.push({
+            segments,
+            score: avgScore,
+            balance,
+            partCount: parts.length,
+            quality: (avgScore / freqPercentiles.max) * 70 + balance * 30 // Combined metric
+          });
         }
-        await new Promise(resolve => setTimeout(resolve, 0));
       }
-
-      // After all partitions are generated, find the desired one if specified
-      if (desiredPartition) {
-        const idx = allPartitions.findIndex(part => 
-          part.map(segment => segment.digits).join("_") === desiredPartition
-        );
-        currentIndex = (idx >= 0) ? idx : 0;
-      } else {
-        currentIndex = 0;
-      }
-
-      renderCurrentCard();
-      updateUrl();
-    }
-
-    let currentIndex = 0;
-
-    // NEW: Create a card element for a given partition and update its content.
-    function createCard(partition, minPercentile) {
-      const card = document.createElement("div");
-      card.className = "result";
-      card.__partition__ = partition; // store partition data for later updates
-      reRenderCard(card, minPercentile);
-      return card;
+      
+      return validPartitions;
     }
     
-    // NEW: Update the card's HTML based on the partition and frequency threshold.
-    function reRenderCard(card, minPercentile) {
-      let html = "";
-      let hasOutput = false;
-      // Cache the global maximum and pre-calculate the logarithm divisor.
-      const globalMaxFreq = globalSortedFrequencies[globalSortedFrequencies.length - 1];
-      const logDivisor = globalMaxFreq ? Math.log(globalMaxFreq + 1) : 1;
-      // Define discrete styles for 4 frequency categories.
-      const categories = [
-        { color: "rgb(200,200,200)", weight: 400 },
-        { color: "rgb(170,170,170)", weight: 500 },
-        { color: "rgb(120,120,120)", weight: 600 },
-        { color: "rgb(0,0,0)",     weight: 700 }
-      ];
-      
-      card.__partition__.forEach((segmentObj, idx) => {
-        const localThreshold = getPercentileValue(segmentObj.sortedFreqs, minPercentile);
-        const filtered = segmentObj.words.filter(entry => entry.freq >= localThreshold);
-        if (filtered.length > 0) {
-          hasOutput = true;
-          html += `<div class="segment">${segmentObj.digits}: `;
-          html += filtered.map(entry => {
-            const wordStr = entry.word.trim();
-            let norm = Math.log(entry.freq + 1) / logDivisor;
-            let cat = norm < 0.25 ? 0 : norm < 0.50 ? 1 : norm < 0.75 ? 2 : 3;
-            const catStyle = categories[cat];
-            return `<span style="color: ${catStyle.color}; font-weight: ${catStyle.weight};">${wordStr}</span>`;
-          }).join(", ");
-          html += `</div>`;
-          if (idx < card.__partition__.length - 1) {
-            html += `<div class="plus">+</div>`;
-          }
-        }
-      });
-      if (!hasOutput) {
-         // No valid words were found. Show grey background and message.
-         card.style.backgroundColor = "#ccc";
-         card.innerHTML = `<div style="text-align: center; font-style: italic; padding: 2rem;">
-                             No possibilities found.<br>
-                             Try broadening your word frequency filter.
-                           </div>`;
-      } else {
-         // Restore default background if valid output is present.
-         card.style.backgroundColor = "";
-         card.innerHTML = html;
+    // Classify word frequency
+    function getWordClass(freq) {
+      if (freq >= freqPercentiles.p90) return 'word-frequent';
+      if (freq >= freqPercentiles.p75) return 'word-common';
+      if (freq >= freqPercentiles.p50) return 'word-uncommon';
+      return 'word-rare';
+    }
+    
+    // Sort partitions
+    function sortPartitions(partitions, method) {
+      const sorted = [...partitions];
+      switch (method) {
+        case 'quality':
+          return sorted.sort((a, b) => b.quality - a.quality);
+        case 'length':
+          return sorted.sort((a, b) => a.partCount - b.partCount || b.quality - a.quality);
+        case 'balanced':
+          return sorted.sort((a, b) => b.balance - a.balance || b.quality - a.quality);
+        default:
+          return sorted;
       }
     }
-
-    function renderCurrentCard() {
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = "";
-      if (allPartitions.length === 0) {
-        resultsDiv.innerHTML = `
-          <div class="instruction" style="text-align:center; padding:1rem;">
-            <p>Hello there, adventurer!</p>
-            <p>Type a number above to conjure a magical mnemonic card.</p>
-            <p>Your word wizardry will appear here once you've entered some digits. Have fun!</p>
-          </div>
-        `;
+    
+    // Render all partitions
+    function renderPartitions() {
+      const container = document.getElementById('results');
+      const sorted = sortPartitions(currentPartitions, currentSort);
+      
+      if (sorted.length === 0) {
+        container.innerHTML = '<div class="empty">No valid partitions found</div>';
         return;
       }
-      const currentMin = parseInt(freqSelect.value, 10);
-      const card = createCard(allPartitions[currentIndex], currentMin);
-      resultsDiv.appendChild(card);
+      
+      const html = sorted.map((partition, idx) => {
+        const qualityPercent = partition.quality;
+        const qualityColor = `hsl(${120 * qualityPercent / 100}, 70%, 50%)`;
+        
+        const segmentsHtml = partition.segments.map((seg, i) => `
+          <div class="segment">
+            <span class="digits">${seg.digits}:</span>
+            <div class="words">
+              ${seg.words.map(w => 
+                `<span class="${getWordClass(w.freq)}">${w.word.trim()}</span>`
+              ).join(' ')}
+            </div>
+          </div>
+          ${i < partition.segments.length - 1 ? '<span class="plus">+</span>' : ''}
+        `).join('');
+        
+        return `
+          <div class="partition" data-idx="${idx}" 
+               style="--quality-color: ${qualityColor}; --quality-percent: ${qualityPercent}%">
+            <div class="quality"></div>
+            <div class="segments">${segmentsHtml}</div>
+            <div class="metrics">
+              <div class="metric">
+                <span>Score:</span>
+                <span class="metric-value">${Math.round(partition.score)}</span>
+              </div>
+              <div class="metric">
+                <span>Parts:</span>
+                <span class="metric-value">${partition.partCount}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      container.innerHTML = `<div class="partitions">${html}</div>`;
+      
+      // Update stats
+      document.getElementById('validCount').textContent = sorted.length;
     }
-
-    function nextCard() {
-      if (allPartitions.length === 0) return;
-      currentIndex = (currentIndex + 1) % allPartitions.length;
-      renderCurrentCard();
-      updateUrl();
+    
+    // Handle input
+    async function handleInput(numStr) {
+      const cleaned = numStr.replace(/\D/g, '');
+      const totalPartitions = cleaned ? Math.pow(2, cleaned.length - 1) : 0;
+      
+      document.getElementById('partitionCount').textContent = totalPartitions;
+      
+      if (!cleaned) {
+        currentPartitions = [];
+        document.getElementById('results').innerHTML = 
+          '<div class="empty">Enter a number to explore mnemonic possibilities</div>';
+        document.getElementById('validCount').textContent = '0';
+        return;
+      }
+      
+      document.getElementById('results').innerHTML = '<div class="loading">Processing partitions</div>';
+      
+      // Process asynchronously
+      await new Promise(resolve => setTimeout(resolve, 10));
+      currentPartitions = processPartitions(cleaned);
+      renderPartitions();
     }
-
-    function prevCard() {
-      if (allPartitions.length === 0) return;
-      currentIndex = (currentIndex - 1 + allPartitions.length) % allPartitions.length;
-      renderCurrentCard();
-      updateUrl();
-    }
-
-    // Attach event listeners for navigation buttons
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("prevBtn").addEventListener("click", prevCard);
-      document.getElementById("nextBtn").addEventListener("click", nextCard);
-
-      // Keyboard navigation: Left/Right arrows and PageUp/PageDown.
-      document.addEventListener("keydown", (e) => {
-         if (["ArrowRight", "PageDown"].includes(e.key)) {
-             e.preventDefault();
-             nextCard();
-         } else if (["ArrowLeft", "PageUp"].includes(e.key)) {
-             e.preventDefault();
-             prevCard();
-         }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Load dictionary
+      dict = await loadDictionary();
+      freqPercentiles = await computeFrequencyPercentiles(dict);
+      
+      // Input handler
+      const input = document.getElementById('numInput');
+      let timeout;
+      input.addEventListener('input', (e) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => handleInput(e.target.value), 150);
+      });
+      
+      // Sort buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentSort = btn.dataset.sort;
+          renderPartitions();
+        });
+      });
+      
+      // Click to copy partition
+      document.getElementById('results').addEventListener('click', (e) => {
+        const partition = e.target.closest('.partition');
+        if (partition) {
+          const idx = parseInt(partition.dataset.idx);
+          const data = sortPartitions(currentPartitions, currentSort)[idx];
+          const text = data.segments.map(s => 
+            `${s.digits}: ${s.words[0].word.trim()}`
+          ).join(' + ');
+          
+          navigator.clipboard.writeText(text);
+          
+          // Visual feedback
+          partition.style.background = '#2a4a3a';
+          setTimeout(() => {
+            partition.style.background = '';
+          }, 200);
+        }
       });
     });
   </script>
