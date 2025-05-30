@@ -85,6 +85,7 @@
       gap: 2px;
       max-width: 1400px;
       margin: 0 auto;
+      width: 100%;
     }
 
     /* Each partition row */
@@ -99,7 +100,9 @@
       transition: all 0.15s ease;
       cursor: pointer;
       position: relative;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
     }
 
     .partition:hover {
@@ -135,6 +138,9 @@
       gap: 0.5rem;
       font-size: 0.9rem;
       line-height: 1.4;
+      min-width: 0;
+      flex-wrap: nowrap;
+      white-space: nowrap;
     }
 
     .segment {
@@ -152,9 +158,10 @@
 
     .words {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 0.3rem;
       align-items: baseline;
+      white-space: nowrap;
     }
 
     .word {
@@ -320,18 +327,67 @@
     @media (max-width: 768px) {
       .header {
         flex-wrap: wrap;
+        gap: 0.5rem;
+      .help {
+        display: none;
+      .filter-btn {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.8rem;
+      }
+      
+      .header input {
+        flex: 1 1 100%;
+        max-width: none;
+      }
+      
+      .filters {
+        flex: 1 1 auto;
+      }
+      
+      .stats {
+        flex: 1 1 auto;
+        justify-content: flex-end;
       }
       
       .partition {
         padding: 0.4rem 0.6rem;
+        /* Ensure horizontal scrolling works on mobile */
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
       
       .segments {
         font-size: 0.85rem;
+        padding-right: 1rem; /* Give some breathing room for scrolling */
       }
       
       .metrics {
+        flex-shrink: 0;
+        padding-left: 0.5rem;
+        border-left: 1px solid #333;
+        margin-left: 0.5rem;
+      }
+      
+      /* Show scroll hint on mobile */
+      .partition::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 30px;
+        background: linear-gradient(to right, transparent, rgba(26, 26, 26, 0.95));
+        pointer-events: none;
+      }
+      
+      .help {
         display: none;
+      }
+      
+      .filter-btn {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.8rem;
       }
     }
   </style>
@@ -593,14 +649,20 @@
         if (valid) {
           // Calculate quality metrics
           const avgScore = totalScore / segments.length;
+          const normalizedAvgScore = avgScore / freqPercentiles.max;
           const balance = 1 - (Math.max(...parts.map(p => p.length)) - Math.min(...parts.map(p => p.length))) / numStr.length;
+          
+          // Heavily weight fewer parts, but penalize if words are too rare
+          const partsPenalty = Math.pow(0.7, parts.length - 1); // Exponential penalty for more parts
+          const minAcceptableFreq = freqPercentiles.p50; // Words should be at least median frequency
+          const freqPenalty = segments.every(s => s.bestFreq >= minAcceptableFreq) ? 1 : 0.5;
           
           validPartitions.push({
             segments,
             score: avgScore,
             balance,
             partCount: parts.length,
-            quality: (avgScore / freqPercentiles.max) * 70 + balance * 30 // Combined metric
+            quality: partsPenalty * freqPenalty * (50 + normalizedAvgScore * 50) // Parts count dominates
           });
         }
       }
@@ -623,7 +685,13 @@
         case 'quality':
           return sorted.sort((a, b) => b.quality - a.quality);
         case 'length':
-          return sorted.sort((a, b) => a.partCount - b.partCount || b.quality - a.quality);
+          // Sort by number of parts first, then by quality
+          return sorted.sort((a, b) => {
+            if (a.partCount !== b.partCount) {
+              return a.partCount - b.partCount;
+            }
+            return b.quality - a.quality;
+          });
         case 'balanced':
           return sorted.sort((a, b) => b.balance - a.balance || b.quality - a.quality);
         default:
@@ -642,7 +710,7 @@
       }
       
       const html = sorted.map((partition, idx) => {
-        const qualityPercent = partition.quality;
+        const qualityPercent = Math.min(100, partition.quality); // Cap at 100%
         const qualityColor = `hsl(${120 * qualityPercent / 100}, 70%, 50%)`;
         
         const segmentsHtml = partition.segments.map((seg, i) => `
@@ -730,9 +798,22 @@
       });
       
       // Click to copy partition
+      let touchStartX = 0;
+      document.getElementById('results').addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+      });
+      
       document.getElementById('results').addEventListener('click', (e) => {
         const partition = e.target.closest('.partition');
         if (partition) {
+          // On mobile, check if this was a tap or a scroll
+          if (e.type === 'click' && window.innerWidth <= 768) {
+            const touchEndX = e.clientX;
+            if (Math.abs(touchEndX - touchStartX) > 10) {
+              return; // This was a scroll, not a tap
+            }
+          }
+          
           const idx = parseInt(partition.dataset.idx);
           const data = sortPartitions(currentPartitions, currentSort)[idx];
           const text = data.segments.map(s => 
