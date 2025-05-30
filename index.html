@@ -5,6 +5,56 @@
   <title>Mnemonic Explorer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    :root {
+      /* Light theme */
+      --bg-primary: #f5f5f5;
+      --bg-secondary: white;
+      --bg-tertiary: #f8f9fa;
+      --bg-quaternary: #fafafa;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-tertiary: #999;
+      --border-primary: #e0e0e0;
+      --border-secondary: #ddd;
+      --border-tertiary: #e5e5e5;
+      --accent-color: #2196F3;
+      --accent-hover: #1976D2;
+      --shadow-light: rgba(0,0,0,0.05);
+      --shadow-medium: rgba(0,0,0,0.08);
+      --shadow-heavy: rgba(0,0,0,0.12);
+      --scrollbar-track: #f0f0f0;
+      --scrollbar-thumb: #ccc;
+      --scrollbar-thumb-hover: #aaa;
+      --progress-bg: rgba(33, 150, 243, 0.1);
+      --progress-text: #1a73e8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* Dark theme */
+        --bg-primary: #121212;
+        --bg-secondary: #1e1e1e;
+        --bg-tertiary: #2a2a2a;
+        --bg-quaternary: #333;
+        --text-primary: #e0e0e0;
+        --text-secondary: #b0b0b0;
+        --text-tertiary: #808080;
+        --border-primary: #404040;
+        --border-secondary: #505050;
+        --border-tertiary: #606060;
+        --accent-color: #64B5F6;
+        --accent-hover: #42A5F5;
+        --shadow-light: rgba(255,255,255,0.05);
+        --shadow-medium: rgba(255,255,255,0.08);
+        --shadow-heavy: rgba(255,255,255,0.12);
+        --scrollbar-track: #2a2a2a;
+        --scrollbar-thumb: #505050;
+        --scrollbar-thumb-hover: #606060;
+        --progress-bg: rgba(100, 181, 246, 0.2);
+        --progress-text: #64B5F6;
+      }
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -13,40 +63,81 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f5f5f5;
-      color: #333;
-      overflow: hidden;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Desktop layout - use flexbox with scrolling main area */
+    @media (min-width: 769px) {
+      body {
+        overflow: hidden;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    /* Mobile layout - normal document flow so header scrolls away */
+    @media (max-width: 768px) {
+      body {
+        overflow: auto;
+        height: auto;
+        min-height: 100vh;
+        display: block;
+      }
     }
 
     /* Header */
     .header {
-      background: white;
-      border-bottom: 2px solid #e0e0e0;
+      background: var(--bg-secondary);
+      border-bottom: 2px solid var(--border-primary);
       padding: 1rem;
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 0.75rem;
-      align-items: center;
       flex-shrink: 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 4px var(--shadow-light);
+      position: relative;
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+
+    /* Make header sticky only on desktop */
+    @media (min-width: 769px) {
+      .header {
+        position: sticky;
+        top: 0;
+      }
     }
 
     .header input {
-      flex: 1 1 300px;
+      width: 100%;
       padding: 0.75rem 1rem;
-      border: 2px solid #ddd;
+      border: 2px solid var(--border-secondary);
       border-radius: 8px;
       font-size: 1.1rem;
       font-family: monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       transition: all 0.2s;
     }
 
     .header input:focus {
       outline: none;
-      border-color: #2196F3;
+      border-color: var(--accent-color);
+    }
+
+    .header input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .controls-and-stats-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
     }
 
     .controls {
@@ -58,10 +149,10 @@
 
     .filter-btn {
       padding: 0.5rem 1rem;
-      background: white;
-      border: 2px solid #ddd;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-secondary);
       border-radius: 6px;
-      color: #666;
+      color: var(--text-secondary);
       font-size: 0.9rem;
       cursor: pointer;
       transition: all 0.2s;
@@ -69,47 +160,50 @@
     }
 
     .filter-btn:hover {
-      background: #f5f5f5;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
     }
 
     .filter-btn.active {
-      background: #2196F3;
-      border-color: #2196F3;
+      background: var(--accent-color);
+      border-color: var(--accent-color);
       color: white;
     }
 
     .stats {
       font-size: 0.9rem;
-      color: #666;
+      color: var(--text-secondary);
       display: flex;
       gap: 1rem;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .stat-value {
-      color: #2196F3;
+      color: var(--accent-color);
       font-weight: 600;
     }
 
     /* Progress bar */
     .progress-container {
-      position: fixed; /* Changed to fixed to overlay content */
+      position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      height: auto; /* Auto height for text */
-      background: rgba(33, 150, 243, 0.1); /* Light blue background */
+      height: auto;
+      background: var(--progress-bg);
       padding: 8px 15px;
       display: none;
       z-index: 1000;
       text-align: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 3px var(--shadow-medium);
+      backdrop-filter: blur(10px);
     }
 
     .progress-bar-wrapper {
       width: 100%;
       height: 6px;
-      background: rgba(0,0,0,0.15);
+      background: var(--border-primary);
       border-radius: 3px;
       overflow: hidden;
       margin-bottom: 5px;
@@ -117,14 +211,14 @@
 
     .progress-bar {
       height: 100%;
-      background: #2196F3;
+      background: var(--accent-color);
       transition: width 0.2s ease-out;
       border-radius: 3px;
     }
 
     .progress-text {
       font-size: 0.85rem;
-      color: #1a73e8; /* Darker blue for text */
+      color: var(--progress-text);
       font-weight: 500;
     }
 
@@ -133,7 +227,7 @@
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
-      background: #f5f5f5;
+      background: var(--bg-primary);
       position: relative;
     }
 
@@ -147,23 +241,33 @@
     /* Each partition section */
     .partition-section {
       margin-bottom: 1.5rem;
-      background: white;
+      background: var(--bg-secondary);
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 8px var(--shadow-medium);
       overflow: hidden;
       transition: transform 0.2s, box-shadow 0.2s;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.3s ease-out forwards;
     }
 
     .partition-section:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 12px var(--shadow-heavy);
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* Partition header */
     .partition-header {
-      background: #f8f9fa;
+      background: var(--bg-tertiary);
       padding: 0.75rem 1rem;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid var(--border-primary);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -179,7 +283,7 @@
     .quality-bar {
       width: 60px;
       height: 6px;
-      background: #e0e0e0;
+      background: var(--border-primary);
       border-radius: 3px;
       overflow: hidden;
     }
@@ -194,11 +298,11 @@
       display: flex;
       gap: 1rem;
       font-size: 0.85rem;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .partition-info strong {
-      color: #333;
+      color: var(--text-primary);
     }
 
     /* Digit spans container */
@@ -212,23 +316,23 @@
     /* Each digit span */
     .digit-span {
       flex: 1 1 280px;
-      background: #fafafa;
-      border: 1px solid #e5e5e5;
+      background: var(--bg-quaternary);
+      border: 1px solid var(--border-tertiary);
       border-radius: 8px;
       padding: 0.75rem;
       transition: all 0.2s;
     }
 
     .digit-span:hover {
-      background: #f5f5f5;
-      border-color: #d0d0d0;
+      background: var(--bg-tertiary);
+      border-color: var(--border-secondary);
     }
 
     .digits {
       font-family: monospace;
       font-size: 1.1rem;
       font-weight: 700;
-      color: #1976D2;
+      color: var(--accent-hover);
       margin-bottom: 0.4rem;
     }
 
@@ -247,25 +351,25 @@
 
     /* Word frequency classes - no boxes, just text styling */
     .word-rare {
-      color: #aaa;
+      color: var(--text-tertiary);
       font-size: 0.9rem;
       font-weight: 400;
     }
 
     .word-uncommon {
-      color: #777;
+      color: var(--text-secondary);
       font-size: 0.95rem;
       font-weight: 400;
     }
 
     .word-common {
-      color: #444;
+      color: var(--text-primary);
       font-size: 1rem;
       font-weight: 500;
     }
 
     .word-frequent {
-      color: #000;
+      color: var(--text-primary);
       font-size: 1.05rem;
       font-weight: 700;
     }
@@ -274,7 +378,7 @@
     .empty, .loading {
       text-align: center;
       padding: 4rem 2rem;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     .loading {
@@ -287,15 +391,15 @@
     .loading-spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid #e0e0e0;
+      border: 4px solid var(--border-primary);
       border-radius: 50%;
-      border-top-color: #2196F3;
+      border-top-color: var(--accent-color);
       animation: spin 0.8s linear infinite;
     }
 
     .loading-text {
       font-size: 0.9rem;
-      color: #666;
+      color: var(--text-secondary);
     }
 
     @keyframes spin {
@@ -308,54 +412,82 @@
     }
 
     .main::-webkit-scrollbar-track {
-      background: #f0f0f0;
+      background: var(--scrollbar-track);
     }
 
     .main::-webkit-scrollbar-thumb {
-      background: #ccc;
+      background: var(--scrollbar-thumb);
       border-radius: 4px;
     }
 
     .main::-webkit-scrollbar-thumb:hover {
-      background: #aaa;
+      background: var(--scrollbar-thumb-hover);
     }
 
-    /* Mobile adjustments */
+    /* Mobile adjustments - completely override any sticky behavior */
     @media (max-width: 768px) {
       .header {
-        padding: 0.75rem;
-        /* flex-direction: column; /* Stack input and wrapper */
-        /* align-items: stretch; /* Make input and wrapper full width */
+        position: relative !important; /* Ensure no sticky behavior */
+        top: auto !important;
+        padding: 0.3rem;
+        flex-direction: column;
+        gap: 0.3rem;
+        border-bottom: 1px solid var(--border-primary);
+        box-shadow: none; /* Remove shadow to reduce visual weight */
+        min-height: auto;
+        max-height: none;
+        height: auto;
+        align-items: stretch;
       }
 
       .header input {
-        flex: 1 1 100%; /* Input takes full width on its own line */
-        margin-bottom: 0.5rem; /* Add some space below input */
+        flex: none !important; /* Override desktop flex */
+        width: 100%;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+        border-width: 1px;
+        border-radius: 4px;
+        height: auto;
+        line-height: normal;
       }
-      
+
       .controls-and-stats-wrapper {
-        display: flex;
-        flex-wrap: wrap; /* Allow wrapping if controls + stats are too wide */
-        justify-content: space-between; /* Space out controls and stats */
+        flex-direction: row;
+        justify-content: space-between;
         align-items: center;
-        width: 100%; /* Wrapper takes full width */
-        gap: 0.5rem; /* Gap between controls and stats if they wrap */
+        gap: 0.3rem;
+        width: 100%;
+        flex-wrap: nowrap;
+        height: auto;
       }
 
       .controls {
-        flex-grow: 1; /* Allow controls to take available space */
-        justify-content: center; /* Center buttons if they wrap */
+        gap: 0.2rem;
+        flex-shrink: 0;
+        height: auto;
+        align-items: center;
       }
       
       .filter-btn {
-        padding: 0.4rem 0.8rem; /* Slightly smaller buttons */
-        font-size: 0.85rem;
+        padding: 0.25rem 0.4rem;
+        font-size: 0.65rem;
+        border-width: 1px;
+        line-height: 1;
+        border-radius: 3px;
+        white-space: nowrap;
+        height: auto;
+        display: inline-flex;
+        align-items: center;
       }
 
       .stats {
-        font-size: 0.8rem; /* Smaller stats text */
-        flex-shrink: 0; /* Prevent stats from shrinking too much */
-        /* text-align: right; */ /* Align stats to the right if space allows */
+        font-size: 0.65rem;
+        gap: 0.3rem;
+        flex-shrink: 0;
+        line-height: 1;
+        white-space: nowrap;
+        height: auto;
+        align-items: center;
       }
 
       .digit-span {
@@ -374,9 +506,14 @@
       .digits {
         font-size: 1rem;
       }
+    }
 
-      .stats {
-        font-size: 0.85rem;
+    /* Ensure no sticky behavior at any mobile size */
+    @media (max-width: 768px) {
+      .header {
+        position: relative !important;
+        top: auto !important;
+        z-index: auto !important;
       }
     }
 
@@ -398,14 +535,15 @@
       bottom: 2rem;
       left: 50%;
       transform: translateX(-50%);
-      background: #333;
-      color: white;
+      background: var(--text-primary);
+      color: var(--bg-primary);
       padding: 0.75rem 1.5rem;
       border-radius: 8px;
       opacity: 0;
       transition: opacity 0.3s;
       pointer-events: none;
       z-index: 1000;
+      backdrop-filter: blur(10px);
     }
 
     .copy-feedback.show {
@@ -611,9 +749,23 @@
         const task = e.data.task || 'generate'; // Default to 'generate'
 
         if (task === 'sortExisting') {
-          const { partitionsToSort, sortMethod } = e.data;
+          const { partitionsToSort, sortMethod, chunkSize = 200 } = e.data;
           const sorted = sortPartitionsInWorker(partitionsToSort, sortMethod);
-          postMessage({ type: 'sortedPartitions', sortedPartitions: sorted, originalTask: 'sortExisting' });
+          
+          // Stream the sorted results in chunks
+          for (let i = 0; i < sorted.length; i += chunkSize) {
+            const chunk = sorted.slice(i, i + chunkSize);
+            const progress = (i + chunk.length) / sorted.length;
+            const isLast = i + chunk.length >= sorted.length;
+            
+            postMessage({
+              type: 'reSortProgress',
+              chunk: chunk,
+              progress: progress,
+              done: isLast,
+              originalTask: 'sortExisting'
+            });
+          }
           return;
         }
 
@@ -765,89 +917,76 @@
       }
     }
     
+    // Optimized DOM updates with requestAnimationFrame
+    let pendingDOMUpdates = [];
+    let rafScheduled = false;
+    
+    function scheduleRender(updateFn) {
+      pendingDOMUpdates.push(updateFn);
+      if (!rafScheduled) {
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          const updates = [...pendingDOMUpdates];
+          pendingDOMUpdates = [];
+          rafScheduled = false;
+          
+          updates.forEach(update => update());
+        });
+      }
+    }
+    
     // Render all partitions
     function renderPartitions() {
-      const container = document.getElementById('results');
-      let htmlToRender = '';
+      scheduleRender(() => {
+        const container = document.getElementById('results');
+        
+        // Clear container for new search/sort
+        if (currentPartitions.length === 0) {
+          if (worker) {
+            container.innerHTML = '<div class="loading-text" style="padding: 4rem 2rem;">Searching for mnemonics...</div>';
+          } else {
+            container.innerHTML = '<div class="empty">No valid partitions found (or enter a number).</div>';
+          }
+          document.getElementById('validCount').textContent = '0';
+          return;
+        }
 
-      if (worker) { // Worker is active, processing is ongoing
-        if (currentPartitions.length > 0) {
-          htmlToRender = currentPartitions.map((partition, idx) => {
-            const qualityPercent = Math.min(100, partition.quality);
-            const digitSpansHtml = partition.segments.map(seg => `
-              <div class="digit-span">
-                <div class="digits">${seg.digits}</div>
-                <div class="words">
-                  ${seg.words.map(w => 
-                    `<span class="word ${getWordClass(w.freq)}">${w.word.trim()}</span>`
-                  ).join('')}
+        // Build HTML for all partitions
+        const htmlToRender = currentPartitions.map((partition, idx) => {
+          const qualityPercent = Math.min(100, partition.quality);
+          const digitSpansHtml = partition.segments.map(seg => `
+            <div class="digit-span">
+              <div class="digits">${seg.digits}</div>
+              <div class="words">
+                ${seg.words.map(w => 
+                  `<span class="word ${getWordClass(w.freq)}">${w.word.trim()}</span>`
+                ).join('')}
+              </div>
+            </div>
+          `).join('');
+          return `
+            <div class="partition-section" data-idx="${idx}">
+              <div class="partition-header">
+                <div class="partition-quality">
+                  <div class="quality-bar">
+                    <div class="quality-fill" style="width: ${qualityPercent}%"></div>
+                  </div>
+                  <span><strong>${partition.partCount}</strong> parts</span>
+                </div>
+                <div class="partition-info">
+                  <span>Quality: <strong>${Math.round(qualityPercent)}%</strong></span>
                 </div>
               </div>
-            `).join('');
-            return `
-              <div class="partition-section" data-idx="${idx}">
-                <div class="partition-header">
-                  <div class="partition-quality">
-                    <div class="quality-bar">
-                      <div class="quality-fill" style="width: ${qualityPercent}%"></div>
-                    </div>
-                    <span><strong>${partition.partCount}</strong> parts</span>
-                  </div>
-                  <div class="partition-info">
-                    <span>Quality: <strong>${Math.round(qualityPercent)}%</strong></span>
-                  </div>
-                </div>
-                <div class="digit-spans">
-                  ${digitSpansHtml}
-                </div>
+              <div class="digit-spans">
+                ${digitSpansHtml}
               </div>
-            `;
-          }).join('');
-        } else {
-          // Worker is active, but no valid partitions found *yet*.
-          // Replace the initial large spinner with a more subtle message.
-          htmlToRender = '<div class="loading-text" style="padding: 4rem 2rem;">Searching for mnemonics...</div>';
-        }
-      } else { // Worker is NOT active (done or never started)
-        if (currentPartitions.length > 0) {
-          htmlToRender = currentPartitions.map((partition, idx) => {
-            const qualityPercent = Math.min(100, partition.quality);
-            const digitSpansHtml = partition.segments.map(seg => `
-              <div class="digit-span">
-                <div class="digits">${seg.digits}</div>
-                <div class="words">
-                  ${seg.words.map(w => 
-                    `<span class="word ${getWordClass(w.freq)}">${w.word.trim()}</span>`
-                  ).join('')}
-                </div>
-              </div>
-            `).join('');
-            return `
-              <div class="partition-section" data-idx="${idx}">
-                <div class="partition-header">
-                  <div class="partition-quality">
-                    <div class="quality-bar">
-                      <div class="quality-fill" style="width: ${qualityPercent}%"></div>
-                    </div>
-                    <span><strong>${partition.partCount}</strong> parts</span>
-                  </div>
-                  <div class="partition-info">
-                    <span>Quality: <strong>${Math.round(qualityPercent)}%</strong></span>
-                  </div>
-                </div>
-                <div class="digit-spans">
-                  ${digitSpansHtml}
-                </div>
-              </div>
-            `;
-          }).join('');
-        } else {
-          // No worker, no partitions.
-          htmlToRender = '<div class="empty">No valid partitions found (or enter a number).</div>';
-        }
-      }
-      container.innerHTML = htmlToRender;
-      document.getElementById('validCount').textContent = currentPartitions.length;
+            </div>
+          `;
+        }).join('');
+        
+        container.innerHTML = htmlToRender;
+        document.getElementById('validCount').textContent = currentPartitions.length;
+      });
     }
     
     // Show/hide progress
@@ -898,7 +1037,7 @@
       }
       
       // Show loading state
-      showProgress(totalPartitions); // Pass totalPartitions here
+      showProgress(totalPartitions);
       document.getElementById('results').innerHTML = `
         <div class="loading">
           <div class="loading-spinner"></div>
@@ -912,20 +1051,18 @@
       currentPartitions = [];
       
       worker.onmessage = (e) => {
-        if (myToken !== processingToken) return; // Ignore if newer request started
+        if (myToken !== processingToken) return;
         
         const { type, progress, batch, done } = e.data;
         
         if (type === 'progress') {
-          // Assuming worker sends back processedCount and totalPartitions if needed,
-          // or we calculate processedCount based on progress and totalPartitions from handleInput
           const processedCount = Math.round(progress * totalPartitions);
           updateProgress(progress, processedCount, totalPartitions);
           
           // Add new batch to current partitions
           currentPartitions.push(...batch);
           
-          // Update valid count display (always update this)
+          // Update valid count display
           document.getElementById('validCount').textContent = currentPartitions.length;
 
           // Smart rendering logic
@@ -935,12 +1072,12 @@
             renderPartitions();
             pendingRender = false;
           } else {
-            pendingRender = true; // Data arrived, but user is scrolled up. Render later if they scroll down.
+            pendingRender = true;
           }
           
           if (done) {
             hideProgress();
-            if (pendingRender) { // Ensure final render if it was pending
+            if (pendingRender) {
                 renderPartitions();
                 pendingRender = false;
             }
@@ -955,7 +1092,7 @@
         numStr: cleaned,
         dict,
         freqPercentiles,
-        sortMethod: currentSort, // Pass currentSort to worker
+        sortMethod: currentSort,
         chunkSize: 100
       });
     }
@@ -977,11 +1114,13 @@
 
       // Scroll listener for smart rendering
       mainScrollContainer.addEventListener('scroll', () => {
-        if (worker && pendingRender) { // Only if worker is active and a render is pending
+        if (worker && pendingRender) {
           isUserScrolledNearBottom = (mainScrollContainer.scrollHeight - mainScrollContainer.scrollTop - mainScrollContainer.clientHeight) < RENDER_THRESHOLD;
           if (isUserScrolledNearBottom) {
-            renderPartitions();
-            pendingRender = false;
+            scheduleRender(() => {
+              renderPartitions();
+              pendingRender = false;
+            });
           }
         }
       }, { passive: true });
@@ -1007,7 +1146,7 @@
         btn.addEventListener('click', () => {
           const newSortMethod = btn.dataset.sort;
 
-          if (newSortMethod === currentSort && !worker) { // No change and no active generation
+          if (newSortMethod === currentSort && !worker) {
             return;
           }
 
@@ -1015,19 +1154,16 @@
           btn.classList.add('active');
           currentSort = newSortMethod;
 
-          if (worker) { // A generation worker is active
+          if (worker) {
             console.log("Sort changed during generation. Restarting generation with new sort: " + currentSort);
-            worker.terminate(); // Stop the current worker
+            worker.terminate();
             worker = null;
-            currentPartitions = []; // Clear existing partially loaded partitions
-            document.getElementById('validCount').textContent = '0'; // Reset count
-            // The loading spinner will be shown by handleInput
-            // Restart generation with the current input value and new sort order
+            currentPartitions = [];
+            document.getElementById('validCount').textContent = '0';
             handleInput(document.getElementById('numInput').value); 
             return;
           }
 
-          // No generation worker active, re-sort currentPartitions if they exist
           if (currentPartitions.length > 0) {
             document.getElementById('results').innerHTML = `
               <div class="loading">
@@ -1037,18 +1173,32 @@
             
             const reSortWorker = new Worker(workerUrl);
             
+            // Save partitions to sort before clearing
+            const partitionsToSort = [...currentPartitions];
+            currentPartitions = []; // Clear current partitions for streaming re-sort
+            
             reSortWorker.onmessage = (event) => {
-              if (event.data.type === 'sortedPartitions' && event.data.originalTask === 'sortExisting') {
-                currentPartitions = event.data.sortedPartitions;
-                renderPartitions(); // Render with the newly sorted full list
-                reSortWorker.terminate();
+              if (event.data.type === 'reSortProgress' && event.data.originalTask === 'sortExisting') {
+                const { chunk, progress, done } = event.data;
+                
+                // Add new chunk to current partitions
+                currentPartitions.push(...chunk);
+                
+                // Update valid count display
+                document.getElementById('validCount').textContent = currentPartitions.length;
+                
+                // Always render during re-sort for immediate feedback
+                renderPartitions();
+                
+                if (done) {
+                  reSortWorker.terminate();
+                }
               }
             };
 
             reSortWorker.onerror = (err) => {
               console.error("Re-sort worker error:", err);
-              // Fallback to main thread sort
-              currentPartitions = sortPartitions(currentPartitions, currentSort); 
+              currentPartitions = sortPartitions(partitionsToSort, currentSort); 
               renderPartitions();
               reSortWorker.terminate();
               alert("Error during re-sorting. Used main thread fallback.");
@@ -1056,11 +1206,10 @@
             
             reSortWorker.postMessage({
               task: 'sortExisting',
-              partitionsToSort: currentPartitions,
+              partitionsToSort: partitionsToSort,
               sortMethod: currentSort
             });
           } else {
-            // No partitions to sort, just update display (e.g., empty message)
             renderPartitions();
           }
         });
@@ -1071,9 +1220,7 @@
         const section = e.target.closest('.partition-section');
         if (section) {
           const idx = parseInt(section.dataset.idx);
-          // For copy, we need the specific item from currentPartitions, which should be in the rendered order.
           const data = currentPartitions[idx]; 
-          // If data is undefined (e.g. list was cleared), do nothing.
           if (!data) return; 
           const text = data.segments.map(s => 
             `${s.digits}: ${s.words[0].word.trim()}`
