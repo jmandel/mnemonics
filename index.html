@@ -13,8 +13,8 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0a0a0a;
-      color: #e0e0e0;
+      background: #f5f5f5;
+      color: #333;
       overflow: hidden;
       height: 100vh;
       display: flex;
@@ -23,50 +23,109 @@
 
     /* Header */
     .header {
-      background: #1a1a1a;
-      border-bottom: 1px solid #333;
-      padding: 0.75rem;
+      background: white;
+      border-bottom: 2px solid #e0e0e0;
+      padding: 1rem;
       display: flex;
+      flex-wrap: wrap;
       gap: 0.75rem;
       align-items: center;
       flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     .header input {
-      flex: 1;
-      max-width: 300px;
-      padding: 0.5rem 1rem;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 6px;
-      color: white;
+      flex: 1 1 300px;
+      padding: 0.75rem 1rem;
+      border: 2px solid #ddd;
+      border-radius: 8px;
       font-size: 1.1rem;
       font-family: monospace;
+      transition: all 0.2s;
     }
 
     .header input:focus {
       outline: none;
-      border-color: #4a9eff;
-      box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+      border-color: #2196F3;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 0.5rem 1rem;
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      color: #666;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .filter-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .filter-btn.active {
+      background: #2196F3;
+      border-color: #2196F3;
+      color: white;
     }
 
     .stats {
       font-size: 0.9rem;
-      color: #888;
+      color: #666;
       display: flex;
       gap: 1rem;
       align-items: center;
     }
 
-    .stat {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
+    .stat-value {
+      color: #2196F3;
+      font-weight: 600;
     }
 
-    .stat-value {
-      color: #4a9eff;
-      font-weight: 600;
+    /* Progress bar */
+    .progress-container {
+      position: fixed; /* Changed to fixed to overlay content */
+      top: 0;
+      left: 0;
+      right: 0;
+      height: auto; /* Auto height for text */
+      background: rgba(33, 150, 243, 0.1); /* Light blue background */
+      padding: 8px 15px;
+      display: none;
+      z-index: 1000;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar-wrapper {
+      width: 100%;
+      height: 6px;
+      background: rgba(0,0,0,0.15);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #2196F3;
+      transition: width 0.2s ease-out;
+      border-radius: 3px;
+    }
+
+    .progress-text {
+      font-size: 0.85rem;
+      color: #1a73e8; /* Darker blue for text */
+      font-weight: 500;
     }
 
     /* Main container */
@@ -74,360 +133,581 @@
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 1rem;
-      background: #0f0f0f;
-    }
-
-    /* Partition list */
-    .partitions {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      max-width: 1400px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-
-      gap: 0.75rem;
-      transition: all 0.15s ease;
-      cursor: pointer;
+      background: #f5f5f5;
       position: relative;
-      overflow-x: auto;
-      overflow-y: hidden;
-      -webkit-overflow-scrolling: touch;
     }
 
-    .partition:hover {
-      background: #222;
-      border-color: #3a3a3a;
-      transform: translateX(2px);
+    /* Partitions container */
+    .partitions {
+      padding: 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
-    .partition.selected {
-      background: #1a2332;
-      border-color: #2a4a6a;
-      box-shadow: 0 0 0 1px rgba(74, 158, 255, 0.3);
+    /* Each partition section */
+    .partition-section {
+      margin-bottom: 1.5rem;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    /* Quality indicator */
-    .quality {
-      width: 4px;
-      height: 100%;
-      position: absolute;
-      left: 0;
-      top: 0;
-      background: linear-gradient(to bottom, 
-        var(--quality-color) 0%, 
-        var(--quality-color) var(--quality-percent), 
-        transparent var(--quality-percent));
+    .partition-section:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
 
-    /* Partition segments */
-    .segments {
-      flex: 1;
+    /* Partition header */
+    .partition-header {
+      background: #f8f9fa;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .partition-quality {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      font-size: 0.9rem;
-      line-height: 1.4;
-      min-width: 0;
-      flex-wrap: nowrap;
-      white-space: nowrap;
     }
 
-    .segment {
+    .quality-bar {
+      width: 60px;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .quality-fill {
+      height: 100%;
+      background: linear-gradient(to right, #ff6b6b, #ffd93d, #6bcf7f);
+      transition: width 0.3s;
+    }
+
+    .partition-info {
       display: flex;
-      align-items: baseline;
-      gap: 0.4rem;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    .partition-info strong {
+      color: #333;
+    }
+
+    /* Digit spans container */
+    .digit-spans {
+      padding: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    /* Each digit span */
+    .digit-span {
+      flex: 1 1 280px;
+      background: #fafafa;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 0.75rem;
+      transition: all 0.2s;
+    }
+
+    .digit-span:hover {
+      background: #f5f5f5;
+      border-color: #d0d0d0;
     }
 
     .digits {
       font-family: monospace;
-      font-size: 0.85rem;
-      color: #666;
-      font-weight: 600;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1976D2;
+      margin-bottom: 0.4rem;
     }
 
     .words {
       display: flex;
-      flex-wrap: nowrap;
-      gap: 0.3rem;
-      align-items: baseline;
-      white-space: nowrap;
+      flex-wrap: wrap;
+      gap: 0.1rem;
+      line-height: 1.2;
     }
 
     .word {
-      transition: all 0.15s ease;
+      display: inline-block;
+      padding: 0 0.2rem;
+      transition: all 0.15s;
     }
 
-    /* Word frequency coloring */
-    .word-rare { color: #555; font-size: 0.85rem; }
-    .word-uncommon { color: #888; font-size: 0.9rem; }
-    .word-common { color: #bbb; font-size: 0.95rem; }
-    .word-frequent { color: #fff; font-size: 1rem; font-weight: 500; }
-
-    .partition:hover .word-frequent {
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    /* Word frequency classes - no boxes, just text styling */
+    .word-rare {
+      color: #aaa;
+      font-size: 0.9rem;
+      font-weight: 400;
     }
 
-    .plus {
+    .word-uncommon {
+      color: #777;
+      font-size: 0.95rem;
+      font-weight: 400;
+    }
+
+    .word-common {
       color: #444;
       font-size: 1rem;
-      padding: 0 0.2rem;
+      font-weight: 500;
     }
 
-    /* Metrics */
-    .metrics {
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-      flex-shrink: 0;
+    .word-frequent {
+      color: #000;
+      font-size: 1.05rem;
+      font-weight: 700;
     }
 
-    .metric {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-size: 0.8rem;
-      color: #666;
-    }
-
-    .metric-value {
-      color: #999;
-      font-weight: 600;
-    }
-
-    /* Loading and empty states */
-    .loading, .empty {
+    /* Empty and loading states */
+    .empty, .loading {
       text-align: center;
-      padding: 3rem;
+      padding: 4rem 2rem;
       color: #666;
     }
 
-    .loading::after {
-      content: '';
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      margin-left: 0.5rem;
-      border: 2px solid #444;
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e0e0e0;
       border-radius: 50%;
-      border-top-color: #4a9eff;
+      border-top-color: #2196F3;
       animation: spin 0.8s linear infinite;
+    }
+
+    .loading-text {
+      font-size: 0.9rem;
+      color: #666;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
-    /* Scrollbar styling */
+    /* Scrollbar */
     .main::-webkit-scrollbar {
-      width: 10px;
+      width: 8px;
     }
 
     .main::-webkit-scrollbar-track {
-      background: #1a1a1a;
+      background: #f0f0f0;
     }
 
     .main::-webkit-scrollbar-thumb {
-      background: #333;
-      border-radius: 5px;
+      background: #ccc;
+      border-radius: 4px;
     }
 
     .main::-webkit-scrollbar-thumb:hover {
-      background: #444;
-    }
-
-    /* Help tooltip */
-    .help {
-      position: relative;
-      cursor: help;
-      color: #666;
-      font-size: 0.9rem;
-      padding: 0.25rem 0.5rem;
-      border: 1px solid #333;
-      border-radius: 4px;
-      transition: all 0.15s ease;
-    }
-
-    .help:hover {
-      color: #999;
-      border-color: #444;
-    }
-
-    .tooltip {
-      position: absolute;
-      bottom: 100%;
-      right: 0;
-      margin-bottom: 0.5rem;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 6px;
-      padding: 1rem;
-      width: 300px;
-      display: none;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      z-index: 1000;
-    }
-
-    .help:hover .tooltip {
-      display: block;
-    }
-
-    .tooltip h3 {
-      margin-bottom: 0.5rem;
-      color: #4a9eff;
-    }
-
-    .tooltip p {
-      font-size: 0.85rem;
-      line-height: 1.5;
-      color: #ccc;
-      margin-bottom: 0.5rem;
-    }
-
-    /* Filter controls */
-    .filters {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    .filter-btn {
-      padding: 0.25rem 0.75rem;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 4px;
-      color: #999;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .filter-btn:hover {
-      background: #333;
-      color: #ccc;
-    }
-
-    .filter-btn.active {
-      background: #2a4a6a;
-      border-color: #4a9eff;
-      color: #4a9eff;
+      background: #aaa;
     }
 
     /* Mobile adjustments */
     @media (max-width: 768px) {
       .header {
-        flex-wrap: wrap;
-        gap: 0.5rem;
-      .help {
-        display: none;
-      .filter-btn {
-        padding: 0.2rem 0.5rem;
-        font-size: 0.8rem;
+        padding: 0.75rem;
+        /* flex-direction: column; /* Stack input and wrapper */
+        /* align-items: stretch; /* Make input and wrapper full width */
       }
-      
+
       .header input {
-        flex: 1 1 100%;
-        max-width: none;
+        flex: 1 1 100%; /* Input takes full width on its own line */
+        margin-bottom: 0.5rem; /* Add some space below input */
       }
       
-      .filters {
-        flex: 1 1 auto;
+      .controls-and-stats-wrapper {
+        display: flex;
+        flex-wrap: wrap; /* Allow wrapping if controls + stats are too wide */
+        justify-content: space-between; /* Space out controls and stats */
+        align-items: center;
+        width: 100%; /* Wrapper takes full width */
+        gap: 0.5rem; /* Gap between controls and stats if they wrap */
       }
-      
-      .stats {
-        flex: 1 1 auto;
-        justify-content: flex-end;
-      }
-      
-      .partition {
-        padding: 0.4rem 0.6rem;
-        /* Ensure horizontal scrolling works on mobile */
-        max-width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      
-      .segments {
-        font-size: 0.85rem;
-        padding-right: 1rem; /* Give some breathing room for scrolling */
-      }
-      
-      .metrics {
-        flex-shrink: 0;
-        padding-left: 0.5rem;
-        border-left: 1px solid #333;
-        margin-left: 0.5rem;
-      }
-      
-      /* Show scroll hint on mobile */
-      .partition::after {
-        content: '';
-        position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        width: 30px;
-        background: linear-gradient(to right, transparent, rgba(26, 26, 26, 0.95));
-        pointer-events: none;
-      }
-      
-      .help {
-        display: none;
+
+      .controls {
+        flex-grow: 1; /* Allow controls to take available space */
+        justify-content: center; /* Center buttons if they wrap */
       }
       
       .filter-btn {
-        padding: 0.2rem 0.5rem;
-        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem; /* Slightly smaller buttons */
+        font-size: 0.85rem;
       }
+
+      .stats {
+        font-size: 0.8rem; /* Smaller stats text */
+        flex-shrink: 0; /* Prevent stats from shrinking too much */
+        /* text-align: right; */ /* Align stats to the right if space allows */
+      }
+
+      .digit-span {
+        flex: 1 1 150px;
+        padding: 0.6rem;
+      }
+
+      .partitions {
+        padding: 0.75rem;
+      }
+
+      .partition-section {
+        margin-bottom: 1rem;
+      }
+
+      .digits {
+        font-size: 1rem;
+      }
+
+      .stats {
+        font-size: 0.85rem;
+      }
+    }
+
+    /* Compact mode for many partitions */
+    @media (max-width: 480px) {
+      .digit-span {
+        flex: 1 1 130px;
+      }
+      
+      .partition-info {
+        font-size: 0.8rem;
+        gap: 0.5rem;
+      }
+    }
+
+    /* Copy feedback */
+    .copy-feedback {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .copy-feedback.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
+  <div class="progress-container" id="progressContainer">
+    <div class="progress-bar-wrapper">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-text" id="progressText">Processing...</div>
+  </div>
+
   <header class="header">
-    <input type="text" id="numInput" placeholder="Enter number..." autofocus>
+    <input type="number" id="numInput" placeholder="Enter number..." autofocus inputmode="numeric" pattern="[0-9]*">
     
-    <div class="filters">
-      <button class="filter-btn active" data-sort="quality">Best First</button>
-      <button class="filter-btn" data-sort="length">Shortest First</button>
-      <button class="filter-btn" data-sort="balanced">Most Balanced</button>
-    </div>
-    
-    <div class="stats">
-      <div class="stat">
-        <span>Partitions:</span>
-        <span class="stat-value" id="partitionCount">0</span>
+    <div class="controls-and-stats-wrapper">
+      <div class="controls">
+        <button class="filter-btn active" data-sort="quality">Best First</button>
+        <button class="filter-btn" data-sort="length">Shortest First</button>
+        <button class="filter-btn" data-sort="balanced">Most Balanced</button>
       </div>
-      <div class="stat">
-        <span>Valid:</span>
-        <span class="stat-value" id="validCount">0</span>
-      </div>
-    </div>
-    
-    <div class="help">
-      ?
-      <div class="tooltip">
-        <h3>Mnemonic System</h3>
-        <p>Numbers → Consonants → Words</p>
-        <p>0=S/Z, 1=T/D, 2=N, 3=M, 4=R, 5=L, 6=CH/SH, 7=K/G, 8=F/V, 9=P/B</p>
-        <p>Brighter words are more common. Click any partition to copy.</p>
+      
+      <div class="stats">
+        <span>Total: <span class="stat-value" id="partitionCount">0</span></span>
+        <span>Valid: <span class="stat-value" id="validCount">0</span></span>
       </div>
     </div>
   </header>
 
-  <main class="main" id="results">
-    <div class="empty">
-      Enter a number to explore mnemonic possibilities
+  <main class="main">
+    <div class="partitions" id="results">
+      <div class="empty">
+        Enter a number to explore mnemonic possibilities
+      </div>
     </div>
   </main>
 
+  <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+
   <script type="module">
+    // Web Worker for partition generation
+    const workerCode = `
+      // Helper functions for balanced partition generation
+      function binom(n, k) {
+        if (k < 0 || k > n) return 0;
+        let num = 1, den = 1;
+        for (let i = 1; i <= k; i++) {
+          num *= (n - i + 1);
+          den *= i;
+        }
+        return num / den;
+      }
+      
+      function nthPartitionBalanced(j, items) {
+        const m = items.length;
+        const n = m - 1;
+        let total = 0;
+        let chosenK = null;
+        let localRank = null;
+        
+        for (let k = 0; k <= n; k++) {
+          const count = binom(m - 1, k);
+          if (j < total + count) {
+            chosenK = k;
+            localRank = j - total;
+            break;
+          }
+          total += count;
+        }
+        
+        const breakpoints = unrankBalancedForK(chosenK, m, localRank);
+        const partition = [];
+        let start = 0;
+        
+        for (let i = 0; i < breakpoints.length; i++) {
+          partition.push(items.slice(start, breakpoints[i] + 1));
+          start = breakpoints[i] + 1;
+        }
+        partition.push(items.slice(start));
+        return partition;
+      }
+      
+      function unrankBalancedForK(k, m, rank) {
+        const s = k + 1;
+        const comp = unrankComposition(s, m, rank);
+        const breakpoints = [];
+        let cum = comp[0] - 1;
+        
+        if (k >= 1) breakpoints.push(cum);
+        for (let i = 1; i < s - 1; i++) {
+          cum += comp[i];
+          breakpoints.push(cum);
+        }
+        return breakpoints;
+      }
+      
+      function unrankComposition(s, m, rank) {
+        const costMap = dp(1, m, s, m);
+        const costs = Object.keys(costMap).map(Number).sort((a, b) => a - b);
+        let bucket = null;
+        
+        for (let c of costs) {
+          if (rank < costMap[c]) {
+            bucket = c;
+            break;
+          }
+          rank -= costMap[c];
+        }
+        
+        return unrankLex(1, m, s, m, bucket, rank);
+      }
+      
+      function dp(i, R, s, m, memo = {}) {
+        const key = i + "," + R;
+        if (key in memo) return memo[key];
+        
+        let result = {};
+        if (i > s) {
+          if (R === 0) result[0] = 1;
+          memo[key] = result;
+          return result;
+        }
+        
+        for (let d = 1; d <= R - (s - i); d++) {
+          const cost_d = Math.pow(s * d - m, 2);
+          const next = dp(i + 1, R - d, s, m, memo);
+          for (let costNext in next) {
+            const totalCost = cost_d + Number(costNext);
+            result[totalCost] = (result[totalCost] || 0) + next[costNext];
+          }
+        }
+        
+        memo[key] = result;
+        return result;
+      }
+      
+      function lexCount(i, R, s, m, remCost, memo = {}) {
+        const key = i + "," + R + "," + remCost;
+        if (key in memo) return memo[key];
+        
+        let count = 0;
+        if (i > s) {
+          count = (R === 0 && remCost === 0) ? 1 : 0;
+          memo[key] = count;
+          return count;
+        }
+        
+        for (let d = 1; d <= R - (s - i); d++) {
+          const cost_d = Math.pow(s * d - m, 2);
+          if (cost_d > remCost) continue;
+          count += lexCount(i + 1, R - d, s, m, remCost - cost_d, memo);
+        }
+        
+        memo[key] = count;
+        return count;
+      }
+      
+      function unrankLex(i, R, s, m, remCost, rank) {
+        if (i > s) {
+          if (R === 0 && remCost === 0) return [];
+          else throw new Error("Unranking error");
+        }
+        
+        for (let d = 1; d <= R - (s - i); d++) {
+          const cost_d = Math.pow(s * d - m, 2);
+          if (cost_d > remCost) continue;
+          const count = lexCount(i + 1, R - d, s, m, remCost - cost_d);
+          if (rank < count) {
+            return [d].concat(unrankLex(i + 1, R - d, s, m, remCost - cost_d, rank));
+          } else {
+            rank -= count;
+          }
+        }
+        
+        throw new Error("Unranking error");
+      }
+
+      // Sort partitions function for worker use
+      function sortPartitionsInWorker(partitions, method) {
+        const sorted = [...partitions]; // Create a new array to sort
+        switch (method) {
+          case 'quality':
+            return sorted.sort((a, b) => b.quality - a.quality);
+          case 'length':
+            return sorted.sort((a, b) => {
+              if (a.partCount !== b.partCount) {
+                return a.partCount - b.partCount;
+              }
+              return b.quality - a.quality; // Secondary sort by quality
+            });
+          case 'balanced':
+            return sorted.sort((a, b) => b.balance - a.balance || b.quality - a.quality); // Secondary sort by quality
+          default:
+            return sorted;
+        }
+      }
+
+      // Main message handler for the worker
+      onmessage = function(e) {
+        const task = e.data.task || 'generate'; // Default to 'generate'
+
+        if (task === 'sortExisting') {
+          const { partitionsToSort, sortMethod } = e.data;
+          const sorted = sortPartitionsInWorker(partitionsToSort, sortMethod);
+          postMessage({ type: 'sortedPartitions', sortedPartitions: sorted, originalTask: 'sortExisting' });
+          return;
+        }
+
+        if (task === 'generate') {
+            const { numStr, dict, freqPercentiles, sortMethod, chunkSize = 100 } = e.data;
+            const items = numStr.split('');
+            const n = items.length;
+            const totalPartitions = Math.pow(2, n - 1);
+            
+            let processed = 0;
+            
+            for (let j = 0; j < totalPartitions; j += chunkSize) {
+              const batch = [];
+              const end = Math.min(j + chunkSize, totalPartitions);
+              
+              for (let i = j; i < end; i++) {
+                const partition = nthPartitionBalanced(i, items); // Uses top-level helper
+                const parts = partition.map(seg => seg.join(''));
+                
+                const segments = [];
+                let valid = true;
+                let totalScore = 0;
+                
+                for (const seg of parts) {
+                  if (dict[seg]) {
+                    const words = dict[seg];
+                    const topWords = words
+                      .sort((a, b) => b.freq - a.freq)
+                      .slice(0, 10);
+                    
+                    segments.push({
+                      digits: seg,
+                      words: topWords,
+                      bestFreq: topWords[0]?.freq || 0
+                    });
+                    
+                    totalScore += topWords[0]?.freq || 0;
+                  } else {
+                    valid = false;
+                    break;
+                  }
+                }
+                
+                if (valid) {
+                  const avgScore = totalScore / segments.length;
+                  const normalizedAvgScore = avgScore / freqPercentiles.max;
+                  const balance = 1 - (Math.max(...parts.map(p => p.length)) - Math.min(...parts.map(p => p.length))) / numStr.length;
+                  
+                  const partsPenalty = Math.pow(0.6, parts.length - 1);
+                  const minAcceptableFreq = freqPercentiles.p25;
+                  const freqPenalty = segments.every(s => s.bestFreq >= minAcceptableFreq) ? 1 : 0.3;
+                  
+                  batch.push({
+                    segments,
+                    score: avgScore,
+                    balance,
+                    partCount: parts.length,
+                    quality: partsPenalty * freqPenalty * (40 + normalizedAvgScore * 60)
+                  });
+                }
+              }
+              
+              processed = end;
+              // Sort the current batch using the provided sortMethod
+              const sortedBatch = sortPartitionsInWorker(batch, sortMethod); 
+              
+              postMessage({
+                type: 'progress',
+                progress: processed / totalPartitions,
+                batch: sortedBatch, // Send the sorted batch
+                done: processed >= totalPartitions,
+                originalTask: 'generate'
+              });
+            }
+        }
+      };
+    `;
+
+    // Create worker
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    let worker = null;
+
     // Dictionary and state
     let dict = {};
     let currentPartitions = [];
     let currentSort = 'quality';
+    let processingToken = 0;
+
+    // For smart rendering
+    const mainScrollContainer = document.querySelector('.main');
+    let isUserScrolledNearBottom = true; // Assume true initially
+    let pendingRender = false;
+    const RENDER_THRESHOLD = 300; // Pixels from bottom
     
     // Load dictionary
     async function loadDictionary() {
@@ -435,7 +715,7 @@
       return await response.json();
     }
     
-    // Frequency percentiles for word classification
+    // Frequency percentiles
     let freqPercentiles = {};
     
     async function computeFrequencyPercentiles(dict) {
@@ -456,213 +736,6 @@
       };
     }
     
-    // Generate all partitions using balanced approach
-    function generatePartitions(numStr) {
-      const items = numStr.split('');
-      const n = items.length;
-      const totalPartitions = Math.pow(2, n - 1);
-      const partitions = [];
-      
-      for (let j = 0; j < totalPartitions; j++) {
-        const partition = nthPartitionBalanced(j, items);
-        partitions.push(partition.map(seg => seg.join('')));
-      }
-      
-      return partitions;
-    }
-    
-    // Helper functions for balanced partition generation
-    function nthPartitionBalanced(j, items) {
-      const m = items.length;
-      const n = m - 1;
-      let total = 0;
-      let chosenK = null;
-      let localRank = null;
-      
-      for (let k = 0; k <= n; k++) {
-        const count = binom(m - 1, k);
-        if (j < total + count) {
-          chosenK = k;
-          localRank = j - total;
-          break;
-        }
-        total += count;
-      }
-      
-      const breakpoints = unrankBalancedForK(chosenK, m, localRank);
-      const partition = [];
-      let start = 0;
-      
-      for (let i = 0; i < breakpoints.length; i++) {
-        partition.push(items.slice(start, breakpoints[i] + 1));
-        start = breakpoints[i] + 1;
-      }
-      partition.push(items.slice(start));
-      return partition;
-    }
-    
-    function unrankBalancedForK(k, m, rank) {
-      const s = k + 1;
-      const comp = unrankComposition(s, m, rank);
-      const breakpoints = [];
-      let cum = comp[0] - 1;
-      
-      if (k >= 1) breakpoints.push(cum);
-      for (let i = 1; i < s - 1; i++) {
-        cum += comp[i];
-        breakpoints.push(cum);
-      }
-      return breakpoints;
-    }
-    
-    function unrankComposition(s, m, rank) {
-      const costMap = dp(1, m, s, m);
-      const costs = Object.keys(costMap).map(Number).sort((a, b) => a - b);
-      let bucket = null;
-      
-      for (let c of costs) {
-        if (rank < costMap[c]) {
-          bucket = c;
-          break;
-        }
-        rank -= costMap[c];
-      }
-      
-      return unrankLex(1, m, s, m, bucket, rank);
-    }
-    
-    function dp(i, R, s, m, memo = {}) {
-      const key = i + "," + R;
-      if (key in memo) return memo[key];
-      
-      let result = {};
-      if (i > s) {
-        if (R === 0) result[0] = 1;
-        memo[key] = result;
-        return result;
-      }
-      
-      for (let d = 1; d <= R - (s - i); d++) {
-        const cost_d = Math.pow(s * d - m, 2);
-        const next = dp(i + 1, R - d, s, m, memo);
-        for (let costNext in next) {
-          const totalCost = cost_d + Number(costNext);
-          result[totalCost] = (result[totalCost] || 0) + next[costNext];
-        }
-      }
-      
-      memo[key] = result;
-      return result;
-    }
-    
-    function lexCount(i, R, s, m, remCost, memo = {}) {
-      const key = i + "," + R + "," + remCost;
-      if (key in memo) return memo[key];
-      
-      let count = 0;
-      if (i > s) {
-        count = (R === 0 && remCost === 0) ? 1 : 0;
-        memo[key] = count;
-        return count;
-      }
-      
-      for (let d = 1; d <= R - (s - i); d++) {
-        const cost_d = Math.pow(s * d - m, 2);
-        if (cost_d > remCost) continue;
-        count += lexCount(i + 1, R - d, s, m, remCost - cost_d, memo);
-      }
-      
-      memo[key] = count;
-      return count;
-    }
-    
-    function unrankLex(i, R, s, m, remCost, rank) {
-      if (i > s) {
-        if (R === 0 && remCost === 0) return [];
-        else throw new Error("Unranking error");
-      }
-      
-      for (let d = 1; d <= R - (s - i); d++) {
-        const cost_d = Math.pow(s * d - m, 2);
-        if (cost_d > remCost) continue;
-        const count = lexCount(i + 1, R - d, s, m, remCost - cost_d);
-        if (rank < count) {
-          return [d].concat(unrankLex(i + 1, R - d, s, m, remCost - cost_d, rank));
-        } else {
-          rank -= count;
-        }
-      }
-      
-      throw new Error("Unranking error");
-    }
-    
-    function binom(n, k) {
-      if (k < 0 || k > n) return 0;
-      let num = 1, den = 1;
-      for (let i = 1; i <= k; i++) {
-        num *= (n - i + 1);
-        den *= i;
-      }
-      return num / den;
-    }
-    
-    // Process and score partitions
-    function processPartitions(numStr) {
-      const allPartitions = generatePartitions(numStr);
-      const validPartitions = [];
-      
-      for (const parts of allPartitions) {
-        const segments = [];
-        let valid = true;
-        let totalScore = 0;
-        let wordCount = 0;
-        
-        for (const seg of parts) {
-          if (dict[seg]) {
-            const words = dict[seg];
-            // Take top words by frequency
-            const topWords = words
-              .sort((a, b) => b.freq - a.freq)
-              .slice(0, 8); // Limit display
-            
-            segments.push({
-              digits: seg,
-              words: topWords,
-              bestFreq: topWords[0]?.freq || 0
-            });
-            
-            totalScore += topWords[0]?.freq || 0;
-            wordCount += topWords.length;
-          } else {
-            valid = false;
-            break;
-          }
-        }
-        
-        if (valid) {
-          // Calculate quality metrics
-          const avgScore = totalScore / segments.length;
-          const normalizedAvgScore = avgScore / freqPercentiles.max;
-          const balance = 1 - (Math.max(...parts.map(p => p.length)) - Math.min(...parts.map(p => p.length))) / numStr.length;
-          
-          // Heavily weight fewer parts, but penalize if words are too rare
-          const partsPenalty = Math.pow(0.7, parts.length - 1); // Exponential penalty for more parts
-          const minAcceptableFreq = freqPercentiles.p50; // Words should be at least median frequency
-          const freqPenalty = segments.every(s => s.bestFreq >= minAcceptableFreq) ? 1 : 0.5;
-          
-          validPartitions.push({
-            segments,
-            score: avgScore,
-            balance,
-            partCount: parts.length,
-            quality: partsPenalty * freqPenalty * (50 + normalizedAvgScore * 50) // Parts count dominates
-          });
-        }
-      }
-      
-      return validPartitions;
-    }
-    
     // Classify word frequency
     function getWordClass(freq) {
       if (freq >= freqPercentiles.p90) return 'word-frequent';
@@ -671,14 +744,14 @@
       return 'word-rare';
     }
     
-    // Sort partitions
+    // Sort partitions (Main thread version - will only be used by copy-to-clipboard for specific item)
+    // renderPartitions will no longer use this.
     function sortPartitions(partitions, method) {
       const sorted = [...partitions];
       switch (method) {
         case 'quality':
           return sorted.sort((a, b) => b.quality - a.quality);
         case 'length':
-          // Sort by number of parts first, then by quality
           return sorted.sort((a, b) => {
             if (a.partCount !== b.partCount) {
               return a.partCount - b.partCount;
@@ -695,58 +768,119 @@
     // Render all partitions
     function renderPartitions() {
       const container = document.getElementById('results');
-      const sorted = sortPartitions(currentPartitions, currentSort);
-      
-      if (sorted.length === 0) {
-        container.innerHTML = '<div class="empty">No valid partitions found</div>';
-        return;
+      let htmlToRender = '';
+
+      if (worker) { // Worker is active, processing is ongoing
+        if (currentPartitions.length > 0) {
+          htmlToRender = currentPartitions.map((partition, idx) => {
+            const qualityPercent = Math.min(100, partition.quality);
+            const digitSpansHtml = partition.segments.map(seg => `
+              <div class="digit-span">
+                <div class="digits">${seg.digits}</div>
+                <div class="words">
+                  ${seg.words.map(w => 
+                    `<span class="word ${getWordClass(w.freq)}">${w.word.trim()}</span>`
+                  ).join('')}
+                </div>
+              </div>
+            `).join('');
+            return `
+              <div class="partition-section" data-idx="${idx}">
+                <div class="partition-header">
+                  <div class="partition-quality">
+                    <div class="quality-bar">
+                      <div class="quality-fill" style="width: ${qualityPercent}%"></div>
+                    </div>
+                    <span><strong>${partition.partCount}</strong> parts</span>
+                  </div>
+                  <div class="partition-info">
+                    <span>Quality: <strong>${Math.round(qualityPercent)}%</strong></span>
+                  </div>
+                </div>
+                <div class="digit-spans">
+                  ${digitSpansHtml}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          // Worker is active, but no valid partitions found *yet*.
+          // Replace the initial large spinner with a more subtle message.
+          htmlToRender = '<div class="loading-text" style="padding: 4rem 2rem;">Searching for mnemonics...</div>';
+        }
+      } else { // Worker is NOT active (done or never started)
+        if (currentPartitions.length > 0) {
+          htmlToRender = currentPartitions.map((partition, idx) => {
+            const qualityPercent = Math.min(100, partition.quality);
+            const digitSpansHtml = partition.segments.map(seg => `
+              <div class="digit-span">
+                <div class="digits">${seg.digits}</div>
+                <div class="words">
+                  ${seg.words.map(w => 
+                    `<span class="word ${getWordClass(w.freq)}">${w.word.trim()}</span>`
+                  ).join('')}
+                </div>
+              </div>
+            `).join('');
+            return `
+              <div class="partition-section" data-idx="${idx}">
+                <div class="partition-header">
+                  <div class="partition-quality">
+                    <div class="quality-bar">
+                      <div class="quality-fill" style="width: ${qualityPercent}%"></div>
+                    </div>
+                    <span><strong>${partition.partCount}</strong> parts</span>
+                  </div>
+                  <div class="partition-info">
+                    <span>Quality: <strong>${Math.round(qualityPercent)}%</strong></span>
+                  </div>
+                </div>
+                <div class="digit-spans">
+                  ${digitSpansHtml}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          // No worker, no partitions.
+          htmlToRender = '<div class="empty">No valid partitions found (or enter a number).</div>';
+        }
       }
-      
-      const html = sorted.map((partition, idx) => {
-        const qualityPercent = Math.min(100, partition.quality); // Cap at 100%
-        const qualityColor = `hsl(${120 * qualityPercent / 100}, 70%, 50%)`;
-        
-        const segmentsHtml = partition.segments.map((seg, i) => `
-          <div class="segment">
-            <span class="digits">${seg.digits}:</span>
-            <div class="words">
-              ${seg.words.map(w => 
-                `<span class="${getWordClass(w.freq)}">${w.word.trim()}</span>`
-              ).join(' ')}
-            </div>
-          </div>
-          ${i < partition.segments.length - 1 ? '<span class="plus">+</span>' : ''}
-        `).join('');
-        
-        return `
-          <div class="partition" data-idx="${idx}" 
-               style="--quality-color: ${qualityColor}; --quality-percent: ${qualityPercent}%">
-            <div class="quality"></div>
-            <div class="segments">${segmentsHtml}</div>
-            <div class="metrics">
-              <div class="metric">
-                <span>Score:</span>
-                <span class="metric-value">${Math.round(partition.score)}</span>
-              </div>
-              <div class="metric">
-                <span>Parts:</span>
-                <span class="metric-value">${partition.partCount}</span>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-      
-      container.innerHTML = `<div class="partitions">${html}</div>`;
-      
-      // Update stats
-      document.getElementById('validCount').textContent = sorted.length;
+      container.innerHTML = htmlToRender;
+      document.getElementById('validCount').textContent = currentPartitions.length;
+    }
+    
+    // Show/hide progress
+    function showProgress(totalPartitions) {
+      const container = document.getElementById('progressContainer');
+      container.style.display = 'block';
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('progressText').textContent = `Initializing... (0 / ${totalPartitions.toLocaleString()})`;
+    }
+    
+    function hideProgress() {
+      document.getElementById('progressContainer').style.display = 'none';
+    }
+    
+    function updateProgress(percent, processedCount, totalPartitions) {
+      document.getElementById('progressBar').style.width = `${percent * 100}%`;
+      const percentageText = (percent * 100).toFixed(1);
+      document.getElementById('progressText').textContent = `Processing: ${percentageText}% (${processedCount.toLocaleString()} / ${totalPartitions.toLocaleString()})`;
     }
     
     // Handle input
     async function handleInput(numStr) {
       const cleaned = numStr.replace(/\D/g, '');
       const totalPartitions = cleaned ? Math.pow(2, cleaned.length - 1) : 0;
+      
+      // Update URL
+      const url = new URL(window.location);
+      if (cleaned) {
+        url.searchParams.set('n', cleaned);
+      } else {
+        url.searchParams.delete('n');
+      }
+      history.replaceState({}, '', url);
       
       document.getElementById('partitionCount').textContent = totalPartitions;
       
@@ -758,12 +892,81 @@
         return;
       }
       
-      document.getElementById('results').innerHTML = '<div class="loading">Processing partitions</div>';
+      // Cancel any existing worker
+      if (worker) {
+        worker.terminate();
+      }
       
-      // Process asynchronously
-      await new Promise(resolve => setTimeout(resolve, 10));
-      currentPartitions = processPartitions(cleaned);
-      renderPartitions();
+      // Show loading state
+      showProgress(totalPartitions); // Pass totalPartitions here
+      document.getElementById('results').innerHTML = `
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">Processing ${totalPartitions} partitions...</div>
+        </div>
+      `;
+      
+      // Create new worker
+      worker = new Worker(workerUrl);
+      const myToken = ++processingToken;
+      currentPartitions = [];
+      
+      worker.onmessage = (e) => {
+        if (myToken !== processingToken) return; // Ignore if newer request started
+        
+        const { type, progress, batch, done } = e.data;
+        
+        if (type === 'progress') {
+          // Assuming worker sends back processedCount and totalPartitions if needed,
+          // or we calculate processedCount based on progress and totalPartitions from handleInput
+          const processedCount = Math.round(progress * totalPartitions);
+          updateProgress(progress, processedCount, totalPartitions);
+          
+          // Add new batch to current partitions
+          currentPartitions.push(...batch);
+          
+          // Update valid count display (always update this)
+          document.getElementById('validCount').textContent = currentPartitions.length;
+
+          // Smart rendering logic
+          isUserScrolledNearBottom = (mainScrollContainer.scrollHeight - mainScrollContainer.scrollTop - mainScrollContainer.clientHeight) < RENDER_THRESHOLD;
+
+          if (isUserScrolledNearBottom || done) {
+            renderPartitions();
+            pendingRender = false;
+          } else {
+            pendingRender = true; // Data arrived, but user is scrolled up. Render later if they scroll down.
+          }
+          
+          if (done) {
+            hideProgress();
+            if (pendingRender) { // Ensure final render if it was pending
+                renderPartitions();
+                pendingRender = false;
+            }
+            worker.terminate();
+            worker = null;
+          }
+        }
+      };
+      
+      // Start processing
+      worker.postMessage({
+        numStr: cleaned,
+        dict,
+        freqPercentiles,
+        sortMethod: currentSort, // Pass currentSort to worker
+        chunkSize: 100
+      });
+    }
+    
+    // Show copy feedback
+    function showCopyFeedback() {
+      const feedback = document.getElementById('copyFeedback');
+      feedback.classList.add('show');
+      setTimeout(() => {
+        feedback.classList.remove('show');
+      }, 2000);
     }
     
     // Initialize
@@ -771,55 +974,114 @@
       // Load dictionary
       dict = await loadDictionary();
       freqPercentiles = await computeFrequencyPercentiles(dict);
+
+      // Scroll listener for smart rendering
+      mainScrollContainer.addEventListener('scroll', () => {
+        if (worker && pendingRender) { // Only if worker is active and a render is pending
+          isUserScrolledNearBottom = (mainScrollContainer.scrollHeight - mainScrollContainer.scrollTop - mainScrollContainer.clientHeight) < RENDER_THRESHOLD;
+          if (isUserScrolledNearBottom) {
+            renderPartitions();
+            pendingRender = false;
+          }
+        }
+      }, { passive: true });
+      
+      // Check URL for initial number
+      const url = new URL(window.location);
+      const initialNumber = url.searchParams.get('n');
+      if (initialNumber) {
+        document.getElementById('numInput').value = initialNumber;
+        handleInput(initialNumber);
+      }
       
       // Input handler
       const input = document.getElementById('numInput');
       let timeout;
       input.addEventListener('input', (e) => {
         clearTimeout(timeout);
-        timeout = setTimeout(() => handleInput(e.target.value), 150);
+        timeout = setTimeout(() => handleInput(e.target.value), 300);
       });
       
       // Sort buttons
       document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+          const newSortMethod = btn.dataset.sort;
+
+          if (newSortMethod === currentSort && !worker) { // No change and no active generation
+            return;
+          }
+
           document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          currentSort = btn.dataset.sort;
-          renderPartitions();
+          currentSort = newSortMethod;
+
+          if (worker) { // A generation worker is active
+            console.log("Sort changed during generation. Restarting generation with new sort: " + currentSort);
+            worker.terminate(); // Stop the current worker
+            worker = null;
+            currentPartitions = []; // Clear existing partially loaded partitions
+            document.getElementById('validCount').textContent = '0'; // Reset count
+            // The loading spinner will be shown by handleInput
+            // Restart generation with the current input value and new sort order
+            handleInput(document.getElementById('numInput').value); 
+            return;
+          }
+
+          // No generation worker active, re-sort currentPartitions if they exist
+          if (currentPartitions.length > 0) {
+            document.getElementById('results').innerHTML = `
+              <div class="loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Re-sorting by ${currentSort}...</div>
+              </div>`;
+            
+            const reSortWorker = new Worker(workerUrl);
+            
+            reSortWorker.onmessage = (event) => {
+              if (event.data.type === 'sortedPartitions' && event.data.originalTask === 'sortExisting') {
+                currentPartitions = event.data.sortedPartitions;
+                renderPartitions(); // Render with the newly sorted full list
+                reSortWorker.terminate();
+              }
+            };
+
+            reSortWorker.onerror = (err) => {
+              console.error("Re-sort worker error:", err);
+              // Fallback to main thread sort
+              currentPartitions = sortPartitions(currentPartitions, currentSort); 
+              renderPartitions();
+              reSortWorker.terminate();
+              alert("Error during re-sorting. Used main thread fallback.");
+            };
+            
+            reSortWorker.postMessage({
+              task: 'sortExisting',
+              partitionsToSort: currentPartitions,
+              sortMethod: currentSort
+            });
+          } else {
+            // No partitions to sort, just update display (e.g., empty message)
+            renderPartitions();
+          }
         });
       });
       
       // Click to copy partition
-      let touchStartX = 0;
-      document.getElementById('results').addEventListener('touchstart', (e) => {
-        touchStartX = e.touches[0].clientX;
-      });
-      
       document.getElementById('results').addEventListener('click', (e) => {
-        const partition = e.target.closest('.partition');
-        if (partition) {
-          // On mobile, check if this was a tap or a scroll
-          if (e.type === 'click' && window.innerWidth <= 768) {
-            const touchEndX = e.clientX;
-            if (Math.abs(touchEndX - touchStartX) > 10) {
-              return; // This was a scroll, not a tap
-            }
-          }
-          
-          const idx = parseInt(partition.dataset.idx);
-          const data = sortPartitions(currentPartitions, currentSort)[idx];
+        const section = e.target.closest('.partition-section');
+        if (section) {
+          const idx = parseInt(section.dataset.idx);
+          // For copy, we need the specific item from currentPartitions, which should be in the rendered order.
+          const data = currentPartitions[idx]; 
+          // If data is undefined (e.g. list was cleared), do nothing.
+          if (!data) return; 
           const text = data.segments.map(s => 
             `${s.digits}: ${s.words[0].word.trim()}`
           ).join(' + ');
           
-          navigator.clipboard.writeText(text);
-          
-          // Visual feedback
-          partition.style.background = '#2a4a3a';
-          setTimeout(() => {
-            partition.style.background = '';
-          }, 200);
+          navigator.clipboard.writeText(text).then(() => {
+            showCopyFeedback();
+          });
         }
       });
     });
