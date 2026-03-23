@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mnemonic Explorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      /* Light theme */
+      --bg-primary: #f5f5f5;
+      --bg-secondary: white;
+      --bg-tertiary: #f8f9fa;
+      --bg-quaternary: #fafafa;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-tertiary: #999;
+      --border-primary: #e0e0e0;
+      --border-secondary: #ddd;
+      --border-tertiary: #e5e5e5;
+      --accent-color: #2196F3;
+      --accent-hover: #1976D2;
+      --shadow-light: rgba(0,0,0,0.05);
+      --shadow-medium: rgba(0,0,0,0.08);
+      --shadow-heavy: rgba(0,0,0,0.12);
+      --scrollbar-track: #f0f0f0;
+      --scrollbar-thumb: #ccc;
+      --scrollbar-thumb-hover: #aaa;
+      --progress-bg: rgba(33, 150, 243, 0.1);
+      --progress-text: #1a73e8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* Dark theme */
+        --bg-primary: #121212;
+        --bg-secondary: #1e1e1e;
+        --bg-tertiary: #2a2a2a;
+        --bg-quaternary: #333;
+        --text-primary: #e0e0e0;
+        --text-secondary: #b0b0b0;
+        --text-tertiary: #808080;
+        --border-primary: #404040;
+        --border-secondary: #505050;
+        --border-tertiary: #606060;
+        --accent-color: #64B5F6;
+        --accent-hover: #42A5F5;
+        --shadow-light: rgba(255,255,255,0.05);
+        --shadow-medium: rgba(255,255,255,0.08);
+        --shadow-heavy: rgba(255,255,255,0.12);
+        --scrollbar-track: #2a2a2a;
+        --scrollbar-thumb: #505050;
+        --scrollbar-thumb-hover: #606060;
+        --progress-bg: rgba(100, 181, 246, 0.2);
+        --progress-text: #64B5F6;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Desktop layout - use flexbox with scrolling main area */
+    @media (min-width: 769px) {
+      body {
+        overflow: hidden;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    /* Mobile layout - normal document flow so header scrolls away */
+    @media (max-width: 768px) {
+      body {
+        overflow: auto;
+        height: auto;
+        min-height: 100vh;
+        display: block;
+      }
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 2px solid var(--border-primary);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px var(--shadow-light);
+      position: relative;
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+
+    /* Make header sticky only on desktop */
+    @media (min-width: 769px) {
+      .header {
+        position: sticky;
+        top: 0;
+      }
+    }
+
+    .header input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border-secondary);
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-family: monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+
+    .header input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+
+    .header input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .controls-and-stats-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 0.5rem 1rem;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-secondary);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .filter-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .filter-btn.active {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+      color: white;
+    }
+
+    .stats {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .stat-value {
+      color: var(--accent-color);
+      font-weight: 600;
+    }
+
+    /* Progress bar */
+    .progress-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: auto;
+      background: var(--progress-bg);
+      padding: 8px 15px;
+      display: none;
+      z-index: 1000;
+      text-align: center;
+      box-shadow: 0 1px 3px var(--shadow-medium);
+      backdrop-filter: blur(10px);
+    }
+
+    .progress-bar-wrapper {
+      width: 100%;
+      height: 6px;
+      background: var(--border-primary);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--accent-color);
+      transition: width 0.2s ease-out;
+      border-radius: 3px;
+    }
+
+    .progress-text {
+      font-size: 0.85rem;
+      color: var(--progress-text);
+      font-weight: 500;
+    }
+
+    /* Main container */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: var(--bg-primary);
+      position: relative;
+    }
+
+    /* Partitions container */
+    .partitions {
+      padding: 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Each partition section */
+    .partition-section {
+      margin-bottom: 1.5rem;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow-medium);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.3s ease-out forwards;
+    }
+
+    .partition-section:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px var(--shadow-heavy);
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Partition header */
+    .partition-header {
+      background: var(--bg-tertiary);
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-primary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .partition-quality {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .quality-bar {
+      width: 60px;
+      height: 6px;
+      background: var(--border-primary);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .quality-fill {
+      height: 100%;
+      background: linear-gradient(to right, #ff6b6b, #ffd93d, #6bcf7f);
+      transition: width 0.3s;
+    }
+
+    .partition-info {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .partition-info strong {
+      color: var(--text-primary);
+    }
+
+    /* Digit spans container */
+    .digit-spans {
+      padding: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    /* Each digit span */
+    .digit-span {
+      flex: 1 1 280px;
+      background: var(--bg-quaternary);
+      border: 1px solid var(--border-tertiary);
+      border-radius: 8px;
+      padding: 0.75rem;
+      transition: all 0.2s;
+    }
+
+    .digit-span:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--border-secondary);
+    }
+
+    .digits {
+      font-family: monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent-hover);
+      margin-bottom: 0.4rem;
+    }
+
+    .words {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.1rem;
+      line-height: 1.2;
+    }
+
+    .word {
+      display: inline-block;
+      padding: 0 0.2rem;
+      transition: all 0.15s;
+    }
+
+    /* Word frequency classes - no boxes, just text styling */
+    .word-rare {
+      color: var(--text-tertiary);
+      font-size: 0.9rem;
+      font-weight: 400;
+    }
+
+    .word-uncommon {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      font-weight: 400;
+    }
+
+    .word-common {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .word-frequent {
+      color: var(--text-primary);
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    /* Empty and loading states */
+    .empty, .loading {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-secondary);
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-primary);
+      border-radius: 50%;
+      border-top-color: var(--accent-color);
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-text {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Scrollbar */
+    .main::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .main::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+    }
+
+    .main::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 4px;
+    }
+
+    .main::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover);
+    }
+
+    /* Mobile adjustments - completely override any sticky behavior */
+    @media (max-width: 768px) {
+      .header {
+        position: relative !important; /* Ensure no sticky behavior */
+        top: auto !important;
+        padding: 0.3rem;
+        flex-direction: column;
+        gap: 0.3rem;
+        border-bottom: 1px solid var(--border-primary);
+        box-shadow: none; /* Remove shadow to reduce visual weight */
+        min-height: auto;
+        max-height: none;
+        height: auto;
+        align-items: stretch;
+      }
+
+      .header input {
+        flex: none !important; /* Override desktop flex */
+        width: 100%;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+        border-width: 1px;
+        border-radius: 4px;
+        height: auto;
+        line-height: normal;
+      }
+
+      .controls-and-stats-wrapper {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.3rem;
+        width: 100%;
+        flex-wrap: nowrap;
+        height: auto;
+      }
+
+      .controls {
+        gap: 0.2rem;
+        flex-shrink: 0;
+        height: auto;
+        align-items: center;
+      }
+      
+      .filter-btn {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.65rem;
+        border-width: 1px;
+        line-height: 1;
+        border-radius: 3px;
+        white-space: nowrap;
+        height: auto;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .stats {
+        font-size: 0.65rem;
+        gap: 0.3rem;
+        flex-shrink: 0;
+        line-height: 1;
+        white-space: nowrap;
+        height: auto;
+        align-items: center;
+      }
+
+      .digit-span {
+        flex: 1 1 150px;
+        padding: 0.6rem;
+      }
+
+      .partitions {
+        padding: 0.75rem;
+      }
+
+      .partition-section {
+        margin-bottom: 1rem;
+      }
+
+      .digits {
+        font-size: 1rem;
+      }
+    }
+
+    /* Ensure no sticky behavior at any mobile size */
+    @media (max-width: 768px) {
+      .header {
+        position: relative !important;
+        top: auto !important;
+        z-index: auto !important;
+      }
+    }
+
+    /* Compact mode for many partitions */
+    @media (max-width: 480px) {
+      .digit-span {
+        flex: 1 1 130px;
+      }
+      
+      .partition-info {
+        font-size: 0.8rem;
+        gap: 0.5rem;
+      }
+    }
+
+    /* Copy feedback */
+    .copy-feedback {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text-primary);
+      color: var(--bg-primary);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    .copy-feedback.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="progress-container" id="progressContainer">
+    <div class="progress-bar-wrapper">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="progress-text" id="progressText">Processing...</div>
+  </div>
+
+  <header class="header">
+    <input type="number" id="numInput" placeholder="Enter number..." autofocus inputmode="numeric" pattern="[0-9]*">
+    
+    <div class="controls-and-stats-wrapper">
+      <div class="controls">
+        <button class="filter-btn active" data-sort="quality">Best First</button>
+        <button class="filter-btn" data-sort="length">Shortest First</button>
+        <button class="filter-btn" data-sort="balanced">Most Balanced</button>
+      </div>
+      
+      <div class="stats">
+        <span>Total: <span class="stat-value" id="partitionCount">0</span></span>
+        <span>Valid: <span class="stat-value" id="validCount">0</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="partitions" id="results">
+      <div class="empty">
+        Enter a number to explore mnemonic possibilities
+      </div>
+    </div>
+  </main>
+
+  <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+
+  <script type="module">
+    // Web Worker for partition generation
+    const workerCode = `
+      // Helper functions for balanced partition generation
+      function binom(n, k) {
+        if (k < 0 || k > n) return 0;
+        let num = 1, den = 1;
+        for (let i = 1; i <= k; i++) {
+          num *= (n - i + 1);
+          den *= i;
+        }
+        return num / den;
+      }
+      
+      function nthPartitionBalanced(j, items) {
+        const m = items.length;
+        const n = m - 1;
+        let total = 0;
+        let chosenK = null;
+        let localRank = null;
+        
+        for (let k = 0; k <= n; k++) {
+          const count = binom(m - 1, k);
+          if (j < total + count) {
+            chosenK = k;
+            localRank = j - total;
+            break;
+          }
+          total += count;
+        }
+        
+        const breakpoints = unrankBalancedForK(chosenK, m, localRank);
+        const partition = [];
+        let start = 0;
+        
+        for (let i = 0; i < breakpoints.length; i++) {
+          partition.push(items.slice(start, breakpoints[i] + 1));
+          start = breakpoints[i] + 1;
+        }
+        partition.push(items.slice(start));
+        return partition;
+      }
+      
+      function unrankBalancedForK(k, m, rank) {
+        const s = k + 1;
+        const comp = unrankComposition(s, m, rank);
+        const breakpoints = [];
+        let cum = comp[0] - 1;
+        
+        if (k >= 1) breakpoints.push(cum);
+        for (let i = 1; i < s - 1; i++) {
+          cum += comp[i];
+          breakpoints.push(cum);
+        }
+        return breakpoints;
+      }
+      
+      function unrankComposition(s, m, rank) {
+        const costMap = dp(1, m, s, m);
+        const costs = Object.keys(costMap).map(Number).sort((a, b) => a - b);
+        let bucket = null;
+        
+        for (let c of costs) {
+          if (rank < costMap[c]) {
+            bucket = c;
+            break;
+          }
+          rank -= costMap[c];
+        }
+        
+        return unrankLex(1, m, s, m, bucket, rank);
+      }
+      
+      function dp(i, R, s, m, memo = {}) {
+        const key = i + "," + R;
+        if (key in memo) return memo[key];
+        
+        let result = {};
+        if (i > s) {
+          if (R === 0) result[0] = 1;
+          memo[key] = result;
+          return result;
+        }
+        
+        for (let d = 1; d <= R - (s - i); d++) {
+          const cost_d = Math.pow(s * d - m, 2);
+          const next = dp(i + 1, R - d, s, m, memo);
+          for (let costNext in next) {
+            const totalCost = cost_d + Number(costNext);
+            result[totalCost] = (result[totalCost] || 0) + next[costNext];
+          }
+        }
+        
+        memo[key] = result;
+        return result;
+      }
+      
+      function lexCount(i, R, s, m, remCost, memo = {}) {
+        const key = i + "," + R + "," + remCost;
+        if (key in memo) return memo[key];
+        
+        let count = 0;
+        if (i > s) {
+          count = (R === 0 && remCost === 0) ? 1 : 0;
+          memo[key] = count;
+          return count;
+        }
+        
+        for (let d = 1; d <= R - (s - i); d++) {
+          const cost_d = Math.pow(s * d - m, 2);
+          if (cost_d > remCost) continue;
+          count += lexCount(i + 1, R - d, s, m, remCost - cost_d, memo);
+        }
+        
+        memo[key] = count;
+        return count;
+      }
+      
+      function unrankLex(i, R, s, m, remCost, rank) {
+        if (i > s) {
+          if (R === 0 && remCost === 0) return [];
+          else throw new Error("Unranking error");
+        }
+        
+        for (let d = 1; d <= R - (s - i); d++) {
+          const cost_d = Math.pow(s * d - m, 2);
+          if (cost_d > remCost) continue;
+          const count = lexCount(i + 1, R - d, s, m, remCost - cost_d);
+          if (rank < count) {
+            return [d].concat(unrankLex(i + 1, R - d, s, m, remCost - cost_d, rank));
+          } else {
+            rank -= count;
+          }
+        }
+        
+        throw new Error("Unranking error");
+      }
+
+      // Sort partitions function for worker use
+      function sortPartitionsInWorker(partitions, method) {
+        const sorted = [...partitions]; // Create a new array to sort
+        switch (method) {
+          case 'quality':
+            return sorted.sort((a, b) => b.quality - a.quality);
+          case 'length':
+            return sorted.sort((a, b) => {
+              if (a.partCount !== b.partCount) {
+                return a.partCount - b.partCount;
+              }
+              return b.quality - a.quality; // Secondary sort by quality
+            });
+          case 'balanced':
+            return sorted.sort((a, b) => b.balance - a.balance || b.quality - a.quality); // Secondary sort by quality
+          default:
+            return sorted;
+        }
+      }
+
+      // Main message handler for the worker
+      onmessage = function(e) {
+        const task = e.data.task || 'generate'; // Default to 'generate'
+
+        if (task === 'sortExisting') {
+          const { partitionsToSort, sortMethod, chunkSize = 200 } = e.data;
+          const sorted = sortPartitionsInWorker(partitionsToSort, sortMethod);
+          
+          // Stream the sorted results in chunks
+          for (let i = 0; i < sorted.length; i += chunkSize) {
+            const chunk = sorted.slice(i, i + chunkSize);
+            const progress = (i + chunk.length) / sorted.length;
+            const isLast = i + chunk.length >= sorted.length;
+            
+            postMessage({
+              type: 'reSortProgress',
+              chunk: chunk,
+              progress: progress,
+              done: isLast,
+              originalTask: 'sortExisting'
+            });
+          }
+          return;
+        }
+
+        if (task === 'generate') {
+            const { numStr, dict, freqPercentiles, sortMethod, chunkSize = 100 } = e.data;
+            const items = numStr.split('');
+            const n = items.length;
+            const totalPartitions = Math.pow(2, n - 1);
+            
+            let processed = 0;
+            
+            for (let j = 0; j < totalPartitions; j += chunkSize) {
+              const batch = [];
+              const end = Math.min(j + chunkSize, totalPartitions);
+              
+              for (let i = j; i < end; i++) {
+                const partition = nthPartitionBalanced(i, items); // Uses top-level helper
+                const parts = partition.map(seg => seg.join(''));
+                
+                const segments = [];
+                let valid = true;
+                let totalScore = 0;
+                
+                for (const seg of parts) {
+                  if (dict[seg]) {
+                    const words = dict[seg];
+                    const topWords = words
+                      .sort((a, b) => b.freq - a.freq)
+                      .slice(0, 10);
+                    
+                    segments.push({
+                      digits: seg,
+                      words: topWords,
+                      bestFreq: topWords[0]?.freq || 0
+                    });
+                    
+                    totalScore += topWords[0]?.freq || 0;
+                  } else {
+                    valid = false;
+                    break;
+                  }
+                }
+                
+                if (valid) {
+                  const avgScore = totalScore / segments.length;
+                  const normalizedAvgScore = avgScore / freqPercentiles.max;
+                  const balance = 1 - (Math.max(...parts.map(p => p.length)) - Math.min(...parts.map(p => p.length))) / numStr.length;
+                  
+                  const partsPenalty = Math.pow(0.6, parts.length - 1);
+                  const minAcceptableFreq = freqPercentiles.p25;
+                  const freqPenalty = segments.every(s => s.bestFreq >= minAcceptableFreq) ? 1 : 0.3;
+                  
+                  batch.push({
+                    segments,
+                    score: avgScore,
+                    balance,
+                    partCount: parts.length,
+                    quality: partsPenalty * freqPenalty * (40 + normalizedAvgScore * 60)
+                  });
+                }
+              }
+              
+              processed = end;
+              // Sort the current batch using the provided sortMethod
+              const sortedBatch = sortPartitionsInWorker(batch, sortMethod); 
+              
+              postMessage({
+                type: 'progress',
+                progress: processed / totalPartitions,
+                batch: sortedBatch, // Send the sorted batch
+                done: processed >= totalPartitions,
+                originalTask: 'generate'
+              });
+            }
+        }
+      };
+    `;
+
+    // Create worker
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    let worker = null;
+
+    // Dictionary and state
+    let dict = {};
+    let currentPartitions = [];
+    let currentSort = 'quality';
+    let processingToken = 0;
+
+    // For smart rendering
+    const mainScrollContainer = document.querySelector('.main');
+    let isUserScrolledNearBottom = true; // Assume true initially
+    let pendingRender = false;
+    const RENDER_THRESHOLD = 300; // Pixels from bottom
+    
+    // Load dictionary
+    async function loadDictionary() {
+      const response = await fetch("cmudict.json");
+      return await response.json();
+    }
+    
+    // Frequency percentiles
+    let freqPercentiles = {};
+    
+    async function computeFrequencyPercentiles(dict) {
+      const allFreqs = [];
+      for (const key in dict) {
+        for (const entry of dict[key]) {
+          allFreqs.push(entry.freq);
+        }
+      }
+      allFreqs.sort((a, b) => a - b);
+      
+      return {
+        p25: allFreqs[Math.floor(allFreqs.length * 0.25)],
+        p50: allFreqs[Math.floor(allFreqs.length * 0.50)],
+        p75: allFreqs[Math.floor(allFreqs.length * 0.75)],
+        p90: allFreqs[Math.floor(allFreqs.length * 0.90)],
+        max: allFreqs[allFreqs.length - 1]
+      };
+    }
+    
+    // Classify word frequency
+    function getWordClass(freq) {
+      if (freq >= freqPercentiles.p90) return 'word-frequent';
+      if (freq >= freqPercentiles.p75) return 'word-common';
+      if (freq >= freqPercentiles.p50) return 'word-uncommon';
+      return 'word-rare';
+    }
+    
+    // Sort partitions (Main thread version - will only be used by copy-to-clipboard for specific item)
+    // renderPartitions will no longer use this.
+    function sortPartitions(partitions, method) {
+      const sorted = [...partitions];
+      switch (method) {
+        case 'quality':
+          return sorted.sort((a, b) => b.quality - a.quality);
+        case 'length':
+          return sorted.sort((a, b) => {
+            if (a.partCount !== b.partCount) {
+              return a.partCount - b.partCount;
+            }
+            return b.quality - a.quality;
+          });
+        case 'balanced':
+          return sorted.sort((a, b) => b.balance - a.balance || b.quality - a.quality);
+        default:
+          return sorted;
+      }
+    }
+    
+    // Optimized DOM updates with requestAnimationFrame
+    let pendingDOMUpdates = [];
+    let rafScheduled = false;
+    
+    function scheduleRender(updateFn) {
+      pendingDOMUpdates.push(updateFn);
+      if (!rafScheduled) {
+        rafScheduled = true;
+        requestAnimationFrame(() => {
+          const updates = [...pendingDOMUpdates];
+          pendingDOMUpdates = [];
+          rafScheduled = false;
+          
+          updates.forEach(update => update());
+        });
+      }
+    }
+    
+    // Render all partitions
+    function renderPartitions() {
+      scheduleRender(() => {
+        const container = document.getElementById('results');
+        
+        // Clear container for new search/sort
+        if (currentPartitions.length === 0) {
+          if (worker) {
+            container.innerHTML = '<div class="loading-text" style="padding: 4rem 2rem;">Searching for mnemonics...</div>';
+          } else {
+            container.innerHTML = '<div class="empty">No valid partitions found (or enter a number).</div>';
+          }
+          document.getElementById('validCount').textContent = '0';
+          return;
+        }
+
+        // Build HTML for all partitions
+        const htmlToRender = currentPartitions.map((partition, idx) => {
+          const qualityPercent = Math.min(100, partition.quality);
+          const digitSpansHtml = partition.segments.map(seg => `
+            <div class="digit-span">
+              <div class="digits">${seg.digits}</div>
+              <div class="words">
+                ${seg.words.map(w => 
+                  `<span class="word ${getWordClass(w.freq)}">${w.word.trim()}</span>`
+                ).join('')}
+              </div>
+            </div>
+          `).join('');
+          return `
+            <div class="partition-section" data-idx="${idx}">
+              <div class="partition-header">
+                <div class="partition-quality">
+                  <div class="quality-bar">
+                    <div class="quality-fill" style="width: ${qualityPercent}%"></div>
+                  </div>
+                  <span><strong>${partition.partCount}</strong> parts</span>
+                </div>
+                <div class="partition-info">
+                  <span>Quality: <strong>${Math.round(qualityPercent)}%</strong></span>
+                </div>
+              </div>
+              <div class="digit-spans">
+                ${digitSpansHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        container.innerHTML = htmlToRender;
+        document.getElementById('validCount').textContent = currentPartitions.length;
+      });
+    }
+    
+    // Show/hide progress
+    function showProgress(totalPartitions) {
+      const container = document.getElementById('progressContainer');
+      container.style.display = 'block';
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('progressText').textContent = `Initializing... (0 / ${totalPartitions.toLocaleString()})`;
+    }
+    
+    function hideProgress() {
+      document.getElementById('progressContainer').style.display = 'none';
+    }
+    
+    function updateProgress(percent, processedCount, totalPartitions) {
+      document.getElementById('progressBar').style.width = `${percent * 100}%`;
+      const percentageText = (percent * 100).toFixed(1);
+      document.getElementById('progressText').textContent = `Processing: ${percentageText}% (${processedCount.toLocaleString()} / ${totalPartitions.toLocaleString()})`;
+    }
+    
+    // Handle input
+    async function handleInput(numStr) {
+      const cleaned = numStr.replace(/\D/g, '');
+      const totalPartitions = cleaned ? Math.pow(2, cleaned.length - 1) : 0;
+      
+      // Update URL
+      const url = new URL(window.location);
+      if (cleaned) {
+        url.searchParams.set('n', cleaned);
+      } else {
+        url.searchParams.delete('n');
+      }
+      history.replaceState({}, '', url);
+      
+      document.getElementById('partitionCount').textContent = totalPartitions;
+      
+      if (!cleaned) {
+        currentPartitions = [];
+        document.getElementById('results').innerHTML = 
+          '<div class="empty">Enter a number to explore mnemonic possibilities</div>';
+        document.getElementById('validCount').textContent = '0';
+        return;
+      }
+      
+      // Cancel any existing worker
+      if (worker) {
+        worker.terminate();
+      }
+      
+      // Show loading state
+      showProgress(totalPartitions);
+      document.getElementById('results').innerHTML = `
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">Processing ${totalPartitions} partitions...</div>
+        </div>
+      `;
+      
+      // Create new worker
+      worker = new Worker(workerUrl);
+      const myToken = ++processingToken;
+      currentPartitions = [];
+      
+      worker.onmessage = (e) => {
+        if (myToken !== processingToken) return;
+        
+        const { type, progress, batch, done } = e.data;
+        
+        if (type === 'progress') {
+          const processedCount = Math.round(progress * totalPartitions);
+          updateProgress(progress, processedCount, totalPartitions);
+          
+          // Add new batch to current partitions
+          currentPartitions.push(...batch);
+          
+          // Update valid count display
+          document.getElementById('validCount').textContent = currentPartitions.length;
+
+          // Smart rendering logic
+          isUserScrolledNearBottom = (mainScrollContainer.scrollHeight - mainScrollContainer.scrollTop - mainScrollContainer.clientHeight) < RENDER_THRESHOLD;
+
+          if (isUserScrolledNearBottom || done) {
+            renderPartitions();
+            pendingRender = false;
+          } else {
+            pendingRender = true;
+          }
+          
+          if (done) {
+            hideProgress();
+            if (pendingRender) {
+                renderPartitions();
+                pendingRender = false;
+            }
+            worker.terminate();
+            worker = null;
+          }
+        }
+      };
+      
+      // Start processing
+      worker.postMessage({
+        numStr: cleaned,
+        dict,
+        freqPercentiles,
+        sortMethod: currentSort,
+        chunkSize: 100
+      });
+    }
+    
+    // Show copy feedback
+    function showCopyFeedback() {
+      const feedback = document.getElementById('copyFeedback');
+      feedback.classList.add('show');
+      setTimeout(() => {
+        feedback.classList.remove('show');
+      }, 2000);
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Load dictionary
+      dict = await loadDictionary();
+      freqPercentiles = await computeFrequencyPercentiles(dict);
+
+      // Scroll listener for smart rendering
+      mainScrollContainer.addEventListener('scroll', () => {
+        if (worker && pendingRender) {
+          isUserScrolledNearBottom = (mainScrollContainer.scrollHeight - mainScrollContainer.scrollTop - mainScrollContainer.clientHeight) < RENDER_THRESHOLD;
+          if (isUserScrolledNearBottom) {
+            scheduleRender(() => {
+              renderPartitions();
+              pendingRender = false;
+            });
+          }
+        }
+      }, { passive: true });
+      
+      // Check URL for initial number
+      const url = new URL(window.location);
+      const initialNumber = url.searchParams.get('n');
+      if (initialNumber) {
+        document.getElementById('numInput').value = initialNumber;
+        handleInput(initialNumber);
+      }
+      
+      // Input handler
+      const input = document.getElementById('numInput');
+      let timeout;
+      input.addEventListener('input', (e) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => handleInput(e.target.value), 300);
+      });
+      
+      // Sort buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const newSortMethod = btn.dataset.sort;
+
+          if (newSortMethod === currentSort && !worker) {
+            return;
+          }
+
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentSort = newSortMethod;
+
+          if (worker) {
+            console.log("Sort changed during generation. Restarting generation with new sort: " + currentSort);
+            worker.terminate();
+            worker = null;
+            currentPartitions = [];
+            document.getElementById('validCount').textContent = '0';
+            handleInput(document.getElementById('numInput').value); 
+            return;
+          }
+
+          if (currentPartitions.length > 0) {
+            document.getElementById('results').innerHTML = `
+              <div class="loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Re-sorting by ${currentSort}...</div>
+              </div>`;
+            
+            const reSortWorker = new Worker(workerUrl);
+            
+            // Save partitions to sort before clearing
+            const partitionsToSort = [...currentPartitions];
+            currentPartitions = []; // Clear current partitions for streaming re-sort
+            
+            reSortWorker.onmessage = (event) => {
+              if (event.data.type === 'reSortProgress' && event.data.originalTask === 'sortExisting') {
+                const { chunk, progress, done } = event.data;
+                
+                // Add new chunk to current partitions
+                currentPartitions.push(...chunk);
+                
+                // Update valid count display
+                document.getElementById('validCount').textContent = currentPartitions.length;
+                
+                // Always render during re-sort for immediate feedback
+                renderPartitions();
+                
+                if (done) {
+                  reSortWorker.terminate();
+                }
+              }
+            };
+
+            reSortWorker.onerror = (err) => {
+              console.error("Re-sort worker error:", err);
+              currentPartitions = sortPartitions(partitionsToSort, currentSort); 
+              renderPartitions();
+              reSortWorker.terminate();
+              alert("Error during re-sorting. Used main thread fallback.");
+            };
+            
+            reSortWorker.postMessage({
+              task: 'sortExisting',
+              partitionsToSort: partitionsToSort,
+              sortMethod: currentSort
+            });
+          } else {
+            renderPartitions();
+          }
+        });
+      });
+      
+      // Click to copy partition
+      document.getElementById('results').addEventListener('click', (e) => {
+        const section = e.target.closest('.partition-section');
+        if (section) {
+          const idx = parseInt(section.dataset.idx);
+          const data = currentPartitions[idx]; 
+          if (!data) return; 
+          const text = data.segments.map(s => 
+            `${s.digits}: ${s.words[0].word.trim()}`
+          ).join(' + ');
+          
+          navigator.clipboard.writeText(text).then(() => {
+            showCopyFeedback();
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

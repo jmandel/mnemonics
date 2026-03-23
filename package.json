@@ -1,0 +1,25 @@
+{
+  "name": "mnemonics",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build index.html --outdir dist",
+    "build:pages": "rm -rf dist && bun run build && touch dist/.nojekyll",
+    "dev": "bun index.html",
+    "perf:browser": "bun run scripts/browser-perf.ts",
+    "prepare:data": "bun run preprocess.js",
+    "test": "cd tests && bun test engine.test.ts integration.test.ts",
+    "test:integration": "cd tests && bun test integration.test.ts",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "bun-types": "^1.3.11",
+    "typescript": "^5.0.0"
+  }
+}

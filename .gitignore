@@ -14,3 +14,9 @@ resources/public/major_system_prod.js.map
 resources/public/prod-out/
 vendor/
 cmudict.0.7a
+onegrams-*.txt
+.pages/
+node_modules/
+dist/
+claude/
+codex/

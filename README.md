@@ -1,106 +1,80 @@
-# Mnemonic Generator (Lewis Carroll-Inspired)
+# Mnemonics
 
-This project is a native JavaScript mnemonic generator that uses the Major System—a mnemonic technique popularized by Lewis Carroll—to convert numeric strings into possible word lists. The application is designed with a whimsical, antique style and a responsive layout that works well on mobile devices. It streams all valid partitions of the input number and displays them directly on a long, scrollable page. An explanation of the Major System mapping is provided below the interactive area.
+This repository now keeps the actual Bun + React mnemonic atlas UI at the repo root, while preserving the older dictionary-building materials and the original single-file explorer as archived source.
 
-## Overview
+## Repo Layout
 
-**Major System Mapping:**  
-Each digit is associated with specific consonant sounds. Vowels (and other filler letters) are later added to form memorable words. The standard mapping used in this project is as follows:
+- `index.html`
+  Bun/Pages HTML entrypoint.
+- `src/`
+  Current mnemonic atlas UI and search engine.
+- `tests/`
+  Engine tests, CDP harness, and browser integration tests.
+- `scripts/browser-perf.ts`
+  Real-browser performance benchmark for the atlas.
+- `preprocess.js`
+  Builds `cmudict.json` from `cmudict.dict` and Google 1-gram counts.
+- `cmudict.dict`
+  Raw CMU Pronouncing Dictionary source.
+- `cmudict.json`
+  Generated dictionary consumed by the app.
+- `pp2.js`
+  Older supporting source material preserved for reference.
+- `archive/legacy-explorer.html`
+  Preserved copy of the original single-file explorer.
 
-Digit | Consonant Sounds  
------ | ----------------  
-0     | S, Z  
-1     | T, D, TH, DH  
-2     | N  
-3     | M  
-4     | R  
-5     | L  
-6     | CH, JH, SH, ZH  
-7     | K, G, NG  
-8     | F, V  
-9     | P, B  
+The local `claude/` and `codex/` spike folders are intentionally ignored and are not part of the committed source tree.
 
-**Dynamic Partitioning:**  
-The generator considers every possible contiguous partition of your numeric string and yields only those partitions for which each segment maps to a list of words from a preprocessed dictionary (derived from the CMU Pronouncing Dictionary).
+## Data Pipeline
 
-**Performance & Responsiveness:**  
-An asynchronous generator streams partitions on-the-fly with work split into small chunks (using `requestAnimationFrame`), dynamically calibrated on page load to ensure near-instantaneous updates as you type.
+The heavy preprocessing path still lives at the repo root.
 
-**Unique Style:**  
-The interface is inspired by Lewis Carroll, with a parchment-like background, playful typography, pastel colors, and decorative borders that create a whimsical, antique feel. The results are clearly separated by decorative dashed borders and each partition's segments are prefixed with the exact numeric substring that generated them.
+```bash
+bun run prepare:data
+```
 
-## Requirements
+That runs `preprocess.js` and rebuilds `cmudict.json`.
 
-- A modern web browser that supports ES6 modules.
-- A preprocessed JSON dictionary file named `cmudict.json` generated from the full CMU Pronouncing Dictionary.
-- A static file server to serve the application (you can use any simple static server).
+`preprocess.js` downloads `onegrams-*.txt` files if they are missing. Those local corpus files are ignored by git.
 
-## Getting Started
+## App
 
-### Preprocessing the Dictionary
+Install and run the current atlas UI from the repo root:
 
-1. Download the full CMU Pronouncing Dictionary from:  
-   https://github.com/cmusphinx/cmudict/raw/refs/heads/master/cmudict.dict  
-   Save it as `cmudict.dict` in your project folder.
+```bash
+bun install
+bun run dev
+```
 
-2. Run the provided preprocessing script (for example, `preprocess.js`) using Bun or Node to generate the JSON file. For instance, if using Bun:
-   
-   ```bash
-   bun run preprocess.js
-   ```
+Useful commands:
 
-   This will generate `cmudict.json` in your project directory.
+```bash
+bun run build
+bun run typecheck
+bun run test
+bun run test:integration
+bun run perf:browser
+```
 
-### Running the Application
+## GitHub Pages
 
-Simply open the `index.html` file in your web browser (or serve it via your preferred static file server). The page will automatically load the preprocessed dictionary and start generating mnemonic partitions as you type in the numeric string input.
+The Pages deploy target is the root app.
 
-## File Structure
+```bash
+bun run build:pages
+```
 
-- **index.html**  
-  A self-contained HTML file that provides:
-  - A responsive, mobile-friendly user interface for entering a numeric string.
-  - A results area where mnemonic partitions are displayed. Each partition is rendered with each segment prefixed by its corresponding digit substring.
-  - An explanation section below the results, which describes the Major System mapping in a table.
+That emits the static artifact into `dist/` and drops a `.nojekyll` marker for GitHub Pages.
 
-- **main.js**  
-  The inline JavaScript within `index.html` implements the mnemonic generator. It:
-  - Loads `cmudict.json` at runtime.
-  - Dynamically streams partitions using an asynchronous generator that yields control in small time slices (configurable via calibration on page load).
-  - Automatically regenerates results on every input change (debounced to 100ms) and updates the URL state.
+The deploy workflow lives at `.github/workflows/pages.yml`.
 
-- **cmudict.dict**  
-  The raw CMU Pronouncing Dictionary file downloaded from the CMU Sphinx repository.
+It:
 
-- **cmudict.json**  
-  The preprocessed JSON dictionary file generated by running the preprocessing script (e.g., `preprocess.js`).
+1. Checks out the repo
+2. Installs Bun
+3. Installs root dependencies
+4. Typechecks the root app
+5. Builds the Pages artifact
+6. Deploys it with the standard GitHub Pages actions
 
-- **preprocess.js**  
-  A JavaScript script that reads `cmudict.dict`, processes it using the Major System mapping, and outputs `cmudict.json`.
-
-## Styling & Layout
-
-The application uses a responsive flex-grid layout. The interactive input area is at the top of the page, and as results are generated, they are appended directly to the page so that the page grows longer. The explanation and mapping table are positioned below the results for easy reference without cluttering the interactive area.
-
-## Performance Optimizations
-
-- **Asynchronous Streaming:**  
-  The generator is implemented as an asynchronous generator that streams partitions without precomputing the entire set, yielding control every few iterations via `requestAnimationFrame`.
-
-- **Dynamic Calibration:**  
-  On page load, the application calibrates the average frame time and adjusts its time-slicing parameters (such as `timeSlice` and `maxYields`) accordingly.
-
-- **Immediate Regeneration:**  
-  Input events trigger immediate (debounced) regeneration of results, ensuring that the UI feels instantaneous even when many partitions must be processed.
-
-## License
-
-This project is provided under the MIT License.
-
-## Acknowledgments
-
-- CMU Pronouncing Dictionary provided by CMU Sphinx.
-- Inspired by the mnemonic systems used by Lewis Carroll.
-- Thanks to the open source community for tools like Bun and modern browser capabilities.
-
-Enjoy your mnemonic generation experience!
+The workflow is wired for pushes to `master` or `main`, plus manual dispatch.

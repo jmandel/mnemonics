@@ -45,7 +45,7 @@ function downloadFile(url, dest, decompress = false) {
   });
 }
 
-// ----- STEP 1: Download One-Gram Files for All Letters -----
+// ----- STEP 1: Download One-Gram Files for All Letters ----- 
 async function downloadOneGramFiles() {
   for (const letter of letters) {
     const url = ONEGRAM_URL_TEMPLATE.replace("{{letter}}", letter);
@@ -59,7 +59,7 @@ async function downloadOneGramFiles() {
   }
 }
 
-// ----- STEP 2: Build Allowed Words Set from CMUDICT -----
+// ----- STEP 2: Build Allowed Words Set from CMUDICT ----- 
 // We stream the CMU dictionary file to build the set of words that appear in it.
 // This set limits the one-gram processing to only words that are in cmudict.
 async function buildAllowedWordsSet() {
@@ -73,17 +73,18 @@ async function buildAllowedWordsSet() {
   for await (const chunk of file.stream()) {
     buffer += decoder.decode(chunk, { stream: true });
     let lines = buffer.split("\n");
-    buffer = lines.pop(); // Save the last partial line
+    buffer = lines.pop(); // The last partial line remains in the buffer
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
-      if (trimmed.startsWith(";;;")) continue; // Skip comments
+      if (trimmed.startsWith(";;;")) continue; // Skip comment lines
       const tokens = trimmed.split(/\s+/);
       if (tokens.length < 1) continue;
       const word = tokens[0].toUpperCase();
       allowedSet.add(word);
     }
   }
+  // Process any leftover data in the buffer.
   if (buffer) {
     const lines = buffer.split("\n");
     for (const line of lines) {
@@ -99,19 +100,20 @@ async function buildAllowedWordsSet() {
   return allowedSet;
 }
 
-// ----- STEP 3: Build Frequency Map from One-Gram Files -----
-// Process each one-gram file in a streaming manner, accumulating frequencies
+// ----- STEP 3: Build Frequency Map from One-Gram Files ----- 
+// Process each one-gram file in a streaming manner. We accumulate frequencies
 // only for words that appear in the allowed set.
 async function buildFrequencyMap(allowedSet) {
   const freqMap = {}; // { WORD (uppercase) -> total count }
   const decoder = new TextDecoder("utf-8");
+
   for (const letter of letters) {
+    console.log(letter);
     const filename = `onegrams-${letter}.txt`;
     if (!existsSync(filename)) {
       console.error(`File ${filename} not found. Skipping.`);
       continue;
     }
-    console.log(filename);
     const file = Bun.file(filename);
     let buffer = "";
     for await (const chunk of file.stream()) {
@@ -138,6 +140,7 @@ function processOneGramLine(line, allowedSet, freqMap) {
   const parts = trimmed.split(/\s+/);
   if (parts.length < 3) return;
   const word = parts[0].toUpperCase();
+  // Only process words that appear in the allowed set (from CMU dictionary)
   if (!allowedSet.has(word)) return;
   const year = parseInt(parts[1], 10);
   const count = parseInt(parts[2], 10);
@@ -148,9 +151,11 @@ function processOneGramLine(line, allowedSet, freqMap) {
 // ----- STEP 4: Build the CMU Dictionary Index -----
 // Build an index using the Major System mapping from the CMU dictionary.
 // Each entry is an array of objects: { word, freq }.
-async function buildCMUDictIndex(freqMap) {
-  // Read the entire dictionary file as text using Bun.file().text()
-  const dictText = await Bun.file(DICT_FILENAME).text();
+async function buildCMUDictIndex() {
+  const allowedSet = await buildAllowedWordsSet();
+  const freqMap = await buildFrequencyMap(allowedSet);
+  
+  const dictText = Bun.file(DICT_FILENAME).textSync();
   const phonemeToDigit = {
     "S": "0",
     "Z": "0",
@@ -161,7 +166,6 @@ async function buildCMUDictIndex(freqMap) {
     "N": "2",
     "M": "3",
     "R": "4",
-    "ER": "4",
     "L": "5",
     "CH": "6",
     "JH": "6",
@@ -175,6 +179,7 @@ async function buildCMUDictIndex(freqMap) {
     "P": "9",
     "B": "9"
   };
+  
   const index = {};
   dictText.split("\n").forEach(line => {
     const trimmed = line.trim();
@@ -186,9 +191,9 @@ async function buildCMUDictIndex(freqMap) {
     const phonemes = tokens.slice(1);
     let key = "";
     for (const p of phonemes) {
-      const basePhoneme = p.replace(/\d+$/u, "");
-      if (phonemeToDigit[basePhoneme]) {
-        key += phonemeToDigit[basePhoneme];
+      if (/\d$/.test(p)) continue;
+      if (phonemeToDigit[p]) {
+        key += phonemeToDigit[p];
       }
     }
     if (!key) return;
@@ -196,19 +201,20 @@ async function buildCMUDictIndex(freqMap) {
     const freq = freqMap[word.toUpperCase()] || 0;
     index[key].push({ word, freq });
   });
+  
   return index;
 }
 
-// ----- STEP 5: Write the Annotated Dictionary to JSON -----
+// ----- STEP 5: Write the Annotated Dictionary to JSON ----- 
 async function preprocess() {
   console.log("Downloading one-gram files...");
   await downloadOneGramFiles();
-  console.log("Building allowed words set from CMUDICT...");
+  console.log("Building allowed words set from CMU dictionary...");
   const allowedSet = await buildAllowedWordsSet();
   console.log("Building frequency map from one-gram files...");
   const freqMap = await buildFrequencyMap(allowedSet);
   console.log("Processing CMU dictionary...");
-  const index = await buildCMUDictIndex(freqMap);
+  const index = await buildCMUDictIndex();
   writeFileSync(OUTPUT_FILENAME, JSON.stringify(index, null, 2), "utf8");
   console.log(`Preprocessed dictionary saved to ${OUTPUT_FILENAME}`);
 }
