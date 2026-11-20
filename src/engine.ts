@@ -2,7 +2,7 @@ import rawDictionaryData from "../cmudict.json";
 
 type RawDictionary = Record<string, Array<{ word: string; freq: number }>>;
 
-export type Word = { word: string; freq: number };
+export type Word = { word: string; freq: number; tier: 0 | 1 | 2 };
 
 export type Breakdown = {
   key: string;
@@ -15,27 +15,37 @@ const MAX_BREAKDOWNS = 500;
 let dictionary: Map<string, Word[]> | null = null;
 
 // Strip CMUdict variant markers like "read(2)", merge duplicates, sort most frequent first.
+// tier: 0 = top 10% by frequency, 1 = above median, 2 = rare.
 export function getDictionary() {
   if (dictionary) {
     return dictionary;
   }
 
   dictionary = new Map();
+  const raw = rawDictionaryData as RawDictionary;
+  const freqs = Object.values(raw)
+    .flat()
+    .map((entry) => entry.freq)
+    .sort((left, right) => left - right);
+  const p50 = freqs[Math.floor(freqs.length * 0.5)] ?? 0;
+  const p90 = freqs[Math.floor(freqs.length * 0.9)] ?? 0;
 
-  for (const [digits, entries] of Object.entries(rawDictionaryData as RawDictionary)) {
+  for (const [digits, entries] of Object.entries(raw)) {
     const byWord = new Map<string, Word>();
 
     for (const entry of entries) {
       const word = entry.word.replace(/\(\d+\)$/u, "").trim();
 
-      if (!/[a-z]/iu.test(word)) {
+      // Skip letter names and abbreviations like "j", "j." or "a.s".
+      if (word.length < 2 || !/[a-z]/iu.test(word) || word.includes(".")) {
         continue;
       }
 
       const existing = byWord.get(word.toLowerCase());
 
       if (!existing || entry.freq > existing.freq) {
-        byWord.set(word.toLowerCase(), { word, freq: Math.max(0, entry.freq) });
+        const freq = Math.max(0, entry.freq);
+        byWord.set(word.toLowerCase(), { word, freq, tier: freq >= p90 ? 0 : freq >= p50 ? 1 : 2 });
       }
     }
 
