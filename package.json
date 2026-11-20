@@ -6,10 +6,8 @@
     "build": "bun build index.html --outdir dist",
     "build:pages": "rm -rf dist && bun run build && touch dist/.nojekyll",
     "dev": "bun index.html",
-    "perf:browser": "bun run scripts/browser-perf.ts",
     "prepare:data": "bun run preprocess.js",
-    "test": "cd tests && bun test engine.test.ts integration.test.ts",
-    "test:integration": "cd tests && bun test integration.test.ts",
+    "test": "bun test tests",
     "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {

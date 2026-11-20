@@ -1,17 +1,15 @@
 # Mnemonics
 
-This repository now keeps the actual Bun + React mnemonic atlas UI at the repo root, while preserving the older dictionary-building materials and the original single-file explorer as archived source.
+A small Bun + React page for the Mnemonic Major System. Type a number and it lists every way to split the digits into chunks that have words (fewest chunks first), with all the words for each chunk, most common first.
 
 ## Repo Layout
 
 - `index.html`
   Bun/Pages HTML entrypoint.
 - `src/`
-  Current mnemonic atlas UI and search engine.
+  The page (`App.tsx`) and the breakdown/word lookup (`engine.ts`).
 - `tests/`
-  Engine tests, CDP harness, and browser integration tests.
-- `scripts/browser-perf.ts`
-  Real-browser performance benchmark for the atlas.
+  Engine tests.
 - `preprocess.js`
   Builds `cmudict.json` from `cmudict.dict` and Google 1-gram counts.
 - `cmudict.dict`
@@ -39,7 +37,7 @@ That runs `preprocess.js` and rebuilds `cmudict.json`.
 
 ## App
 
-Install and run the current atlas UI from the repo root:
+Install and run from the repo root:
 
 ```bash
 bun install
@@ -52,8 +50,6 @@ Useful commands:
 bun run build
 bun run typecheck
 bun run test
-bun run test:integration
-bun run perf:browser
 ```
 
 ## GitHub Pages
