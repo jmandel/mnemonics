@@ -1,0 +1,29 @@
+name: Check word data rebuilds
+
+# words.json must be exactly what scripts/build_words.py produces from the pinned
+# sources, so nothing in it can be edited by hand.
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Rebuild words.json from pinned sources
+        run: uv run --locked scripts/build_words.py
+
+      - name: Fail if it differs from the committed file
+        run: git diff --exit-code --stat words.json

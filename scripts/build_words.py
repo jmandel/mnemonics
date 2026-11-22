@@ -8,10 +8,13 @@ familiarity tier, display casing (names and acronyms), and same-sound spellings 
 Output: {digits: [[shown, tier, concrete, "other/spellings"?], ...]}, tier 0 = common,
 1 = familiar, 2 = obscure; concrete = 1 for easy-to-picture words.
 
-Run from the repo root:  uv run scripts/build_words.py
-Source files are downloaded once into data/sources/ (git-ignored).
+Run from the repo root:  uv run --locked scripts/build_words.py
+Every input is downloaded from a pinned URL into data/sources/ (git-ignored) and
+checked against its sha256, so a rebuild reproduces words.json byte for byte.
+Python dependencies are locked in scripts/build_words.py.lock.
 """
 
+import hashlib
 import json
 import re
 import sys
@@ -27,13 +30,36 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCES = ROOT / "data" / "sources"
 OUT = ROOT / "words.json"
 
+# name: (pinned URL, sha256). GitHub sources are pinned to a commit.
 DOWNLOADS = {
-    "enable1.txt": "https://raw.githubusercontent.com/dolph/dictionary/master/enable1.txt",
-    "concreteness.txt": "https://raw.githubusercontent.com/ArtsEngine/concreteness/master/Concreteness_ratings_Brysbaert_et_al_BRM.txt",
-    "prevalence.xlsx": "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-018-1077-9/MediaObjects/13428_2018_1077_MOESM2_ESM.xlsx",
+    # CMU Pronouncing Dictionary, cmusphinx/cmudict as of 2024-12-17.
+    "cmudict.dict": (
+        "https://raw.githubusercontent.com/cmusphinx/cmudict/0f8072f814306c5ee4fbf992ed853601b12c01f9/cmudict.dict",
+        "81917843c7f44ce2b094ac63873c2c7a4cf802040792c455ba3ca406891c3d22",
+    ),
+    "enable1.txt": (
+        "https://raw.githubusercontent.com/dolph/dictionary/233d25a56b9ac8bef906916ccf091a976995cce0/enable1.txt",
+        "3f16130220645692ed49c7134e24a18504c2ca55b3c012f7290e3e77c63b1a89",
+    ),
+    # Brysbaert, Warriner & Kuperman (2014) concreteness ratings.
+    "concreteness.txt": (
+        "https://raw.githubusercontent.com/ArtsEngine/concreteness/0e52728a0c419c7755924b6c8b9d467b3c01720b/Concreteness_ratings_Brysbaert_et_al_BRM.txt",
+        "0b4082dbd38585b0ee1fd258145b7a50592f8d0d98e5fc6b6844ceef3cd8ecc8",
+    ),
+    # Brysbaert et al. (2019) word prevalence norms, the paper's supplementary file.
+    "prevalence.xlsx": (
+        "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-018-1077-9/MediaObjects/13428_2018_1077_MOESM2_ESM.xlsx",
+        "3b2cbee33f7a4eab50e71a7a09461fe28c32bb16c53435327b94cf7b951b76af",
+    ),
     # Hunspell en_US (from SCOWL) keeps capitalization: "India", "FBI", "email".
-    "en_US.dic": "https://raw.githubusercontent.com/wooorm/dictionaries/main/dictionaries/en/index.dic",
-    "first-names.txt": "https://raw.githubusercontent.com/dominictarr/random-name/master/first-names.txt",
+    "en_US.dic": (
+        "https://raw.githubusercontent.com/wooorm/dictionaries/8cfea406b505e4d7df52d5a19bce525df98c54ab/dictionaries/en/index.dic",
+        "f0b1a234bd178bdd01875b2a392a9647f888b8fe879f79c52aae62c2759b3647",
+    ),
+    "first-names.txt": (
+        "https://raw.githubusercontent.com/dominictarr/random-name/468ae50d63f1d1ecb417d1b119748df9191431e7/first-names.txt",
+        "17d20fdf5281781bf2f2f73119e39d040f5a6da40ffa93d2cab06027df5fb37d",
+    ),
 }
 
 # Abbreviations Hunspell lists as proper nouns ("Nov", "Gen"); not mnemonic words.
@@ -92,11 +118,15 @@ def digits_for(phones):
 
 def fetch_sources():
     SOURCES.mkdir(parents=True, exist_ok=True)
-    for name, url in DOWNLOADS.items():
+    for name, (url, expected) in DOWNLOADS.items():
         path = SOURCES / name
         if not path.exists():
             print(f"downloading {name}", file=sys.stderr)
             urllib.request.urlretrieve(url, path)
+        # Also checks cached files, so a stale or edited source can't slip in.
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != expected:
+            sys.exit(f"{name}: sha256 {actual} does not match pinned {expected}; delete it and rerun")
 
 
 def load_prevalence():
@@ -212,7 +242,7 @@ def main():
 
     # word -> pronunciations in CMUdict order; the first is the standard one.
     pronunciations = defaultdict(list)
-    for line in (ROOT / "cmudict.dict").read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in (SOURCES / "cmudict.dict").read_text(encoding="utf-8", errors="replace").splitlines():
         if not line.strip() or line.startswith(";;;"):
             continue
         head, *phones = line.split("#")[0].split()

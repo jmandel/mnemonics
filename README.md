@@ -8,20 +8,22 @@ A small Bun + React page for the Mnemonic Major System. Type a number and it lis
   The page (`App.tsx`) and the breakdown/word lookup (`engine.ts`).
 - `tests/`
   Engine tests.
-- `scripts/build_words.py`
-  Builds `words.json` from `cmudict.dict` and the word data below.
-- `cmudict.dict`
-  CMU Pronouncing Dictionary, the source of pronunciations.
+- `scripts/build_words.py`, `scripts/build_words.py.lock`
+  Builds `words.json` from the sources below, with locked Python dependencies.
 - `words.json`
   Generated word list consumed by the app.
 - `pp2.js`, `archive/legacy-explorer.html`
-  Older material preserved for reference.
+  Older material preserved for reference (`pp2.js` expects a `cmudict.dict` alongside it, now in `data/sources/`).
 
 ## Word Data
 
 ```bash
-bun run prepare:data   # = uv run scripts/build_words.py
+bun run prepare:data   # = uv run --locked scripts/build_words.py
 ```
+
+`words.json` is generated, never edited by hand. The script downloads every input from a pinned URL (GitHub sources pinned to a commit) into `data/sources/`, checks each file's sha256, and stops if one doesn't match. Every rule, threshold and stoplist lives in the script. A rebuild from a fresh clone reproduces `words.json` byte for byte, and the `Check word data rebuilds` workflow verifies that on every push.
+
+To change the data, edit the script (or pin a newer source and update its checksum), rerun, and commit the script and `words.json` together.
 
 Each CMUdict pronunciation is turned into Major System digits. NG follows the spelling: 27 in "sing", 2 before k/g as in "bank" (927). A word's alternate pronunciations are only used when they keep every consonant, so casual forms like "twenny" don't file "twenty" under 12. For every word the build then decides:
 
@@ -34,9 +36,9 @@ Each CMUdict pronunciation is turned into Major System digits. NG follows the sp
 
 Letter names, abbreviations and possessives are skipped.
 
-Sources, downloaded into `data/sources/` on first run:
+Sources, downloaded into `data/sources/` on first run (exact URLs and checksums are in the script):
 
-- [CMU Pronouncing Dictionary](https://github.com/cmusphinx/cmudict) (BSD).
+- [CMU Pronouncing Dictionary](https://github.com/cmusphinx/cmudict) (BSD), as of 2024-12-17.
 - [wordfreq](https://github.com/rspeer/wordfreq) Zipf frequencies by Robyn Speer (data CC BY-SA 4.0).
 - Word prevalence norms: Brysbaert, Mandera, McCormick & Keuleers (2019), "Word prevalence norms for 62,000 English lemmas", *Behavior Research Methods* 51, 467–479.
 - Concreteness ratings: Brysbaert, Warriner & Kuperman (2014), "Concreteness ratings for 40 thousand generally known English word lemmas", *Behavior Research Methods* 46, 904–911.
