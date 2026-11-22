@@ -33,7 +33,26 @@ DOWNLOADS = {
     "prevalence.xlsx": "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-018-1077-9/MediaObjects/13428_2018_1077_MOESM2_ESM.xlsx",
     # Hunspell en_US (from SCOWL) keeps capitalization: "India", "FBI", "email".
     "en_US.dic": "https://raw.githubusercontent.com/wooorm/dictionaries/main/dictionaries/en/index.dic",
+    "first-names.txt": "https://raw.githubusercontent.com/dominictarr/random-name/master/first-names.txt",
 }
+
+# Abbreviations Hunspell lists as proper nouns ("Nov", "Gen"); not mnemonic words.
+ABBREVIATIONS = {
+    "jan", "feb", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+    "mon", "tue", "tues", "thu", "thur", "thurs", "fri",
+    "gen", "pre", "del", "dept", "govt", "corp", "inc", "ltd", "mr", "mrs", "ms", "dr", "jr", "sr",
+}
+
+# Names: Hunspell's curated proper nouns (Canberra, Picasso, Godzilla) are kept down to
+# Zipf 3.0; others need 3.8, which drops the long tail of surnames (Accetta, Szeto).
+# Plain first names below common level go to rare so they don't crowd familiar words.
+MIN_LISTED_NAME_ZIPF = 3.0
+MIN_NAME_ZIPF = 3.8
+COMMON_NAME_ZIPF = 4.3
+
+CONTRACTION = re.compile(
+    r"[a-z]+n't|y'all|(i|you|we|they|he|she|it|that|there|here|who|what|where|let)'(ll|re|ve|d|m|s)"
+)
 
 # Slurs are dropped. Swear words are kept like any other word.
 SLURS = {
@@ -135,7 +154,7 @@ def capitalize(word):
     return "-".join(part[:1].upper() + part[1:] for part in word.split("-"))
 
 
-def classify(word, zipf, is_name, prevalence, concreteness):
+def classify(word, zipf, is_name, prevalence, concreteness, first_names):
     """Return (tier, sort_score, concrete). Tier 0 = common, 1 = familiar, 2 = obscure."""
     family = lemmas(word)
     # Inflections inherit how well known their base word is ("metered" from "meter").
@@ -143,7 +162,7 @@ def classify(word, zipf, is_name, prevalence, concreteness):
     conc = max((concreteness[w] for w in family if w in concreteness), default=None)
 
     if is_name:
-        tier = 0 if zipf >= 4.3 else 1 if zipf >= 3.3 else 2
+        tier = 0 if zipf >= COMMON_NAME_ZIPF else 2 if word in first_names else 1
     elif known is not None:
         tier = 0 if known >= 0.97 and zipf >= 2.5 else 1 if known >= 0.85 and zipf >= 1.5 else 2
     else:
@@ -171,8 +190,16 @@ def keep_spelling(word, zipf, dictionary, prevalence, cased):
     # wordfreq can't judge these: it scores "how-many" by its parts.
     if "-" in word and not (word in dictionary or word in prevalence or word in cased):
         return False
-    # Two-letter fragments ("sh", "li", "hm").
-    return len(word) >= 3 or word in prevalence
+    # Apostrophes: standard contractions ("don't", "we'll", "y'all") or listed words
+    # ("o'clock"); not dialect forms like "ya'll" or "ol'".
+    if "'" in word and not (
+        CONTRACTION.fullmatch(word) or word in dictionary or word in prevalence or word in cased
+    ):
+        return False
+    # Dialect spellings: "doin'", "nothin".
+    if word.endswith("in'") or (word.endswith("in") and word + "g" in dictionary and word not in dictionary):
+        return False
+    return True
 
 
 def main():
@@ -181,6 +208,7 @@ def main():
     concreteness = load_concreteness()
     dictionary = set((SOURCES / "enable1.txt").read_text().split())
     cased = load_cased_words()
+    first_names = {line.strip().lower() for line in (SOURCES / "first-names.txt").read_text().splitlines()}
 
     # word -> pronunciations in CMUdict order; the first is the standard one.
     pronunciations = defaultdict(list)
@@ -214,10 +242,14 @@ def main():
                 if not keep_spelling(word, zipf, dictionary, prevalence, cased):
                     continue
                 shown, is_name = display_form(word, lemmas(word), zipf, prevalence, dictionary, cased)
-                # Drop names nobody uses.
-                if is_name and zipf == 0:
+                if is_name and (
+                    zipf < (MIN_LISTED_NAME_ZIPF if word in cased else MIN_NAME_ZIPF) or word in ABBREVIATIONS
+                ):
                     continue
-                tier, score, concrete = classify(word, zipf, is_name, prevalence, concreteness)
+                # Short words must be known: drops "sh", "hm", "ers", "ras".
+                if not is_name and len(word) <= 3 and zipf < 4 and not (lemmas(word) & prevalence.keys()):
+                    continue
+                tier, score, concrete = classify(word, zipf, is_name, prevalence, concreteness, first_names)
                 ranked.append((tier, -score, word, shown, is_name, concrete))
             ranked.sort()
             # Same pronunciation, same digits: one mnemonic. Keep the best spelling.

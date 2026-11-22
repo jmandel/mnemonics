@@ -83,3 +83,13 @@ test("obscure names stay out of common words", () => {
 test("long inputs stay bounded", () => {
   expect(findBreakdowns("31415926535897932384", 2).length).toBeLessThanOrEqual(500);
 });
+
+test("obscure surnames, abbreviations, dialect forms and fragments are gone", () => {
+  const everything = ["12", "125", "0", "1", "3", "29", "5", "21"].flatMap((digits) =>
+    wordsFor(digits).map((entry) => entry.word),
+  );
+  for (const junk of ["Dani", "Accetta", "Nov", "Gen", "ya'll", "Ol'", "doin'", "ers"]) {
+    expect(everything).not.toContain(junk);
+  }
+  expect(filedUnder("Danny", "12")).toBe(true);
+});

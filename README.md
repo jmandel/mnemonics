@@ -26,9 +26,9 @@ bun run prepare:data   # = uv run scripts/build_words.py
 Each CMUdict pronunciation is turned into Major System digits. NG follows the spelling: 27 in "sing", 2 before k/g as in "bank" (927). A word's alternate pronunciations are only used when they keep every consonant, so casual forms like "twenny" don't file "twenty" under 12. For every word the build then decides:
 
 - **Familiarity tier** (common / familiar / obscure), shown by the `common · familiar · all` control. It uses word prevalence (the share of people who know a word), falling back to frequency. Inflected forms inherit their base word's prevalence, so "metered" counts as well known because "meter" is.
-- **Name, acronym or word**, from the capitalization in Hunspell's en_US list (India, FBI, email), falling back to the ENABLE list and prevalence norms. Names are capitalized, acronyms uppercase; names with no measurable frequency are dropped.
+- **Name, acronym or word**, from the capitalization in Hunspell's en_US list (India, FBI, email), falling back to the ENABLE list and prevalence norms. Names are capitalized, acronyms uppercase. Names Hunspell lists (Canberra, Picasso, Godzilla) are kept down to wordfreq Zipf 3.0, other names need 3.8, so the long tail of surnames is dropped. First names below common frequency go to the rare tier.
 - **Easy to picture** (concreteness 4+), used to rank splits with the same number of chunks.
-- **Filtering.** Slurs are dropped; swear words are kept. Possessives, abbreviations, letter names, two-letter fragments and hyphenated phrases that no word list has ("how-many") are skipped.
+- **Filtering.** Slurs are dropped; swear words are kept. Possessives, abbreviations ("Nov"), letter names, unknown short words ("ers"), dialect forms ("doin'", "ya'll") and hyphenated phrases that no word list has ("how-many") are skipped.
 - **Order within a chunk:** tier, then frequency, nudged toward words people know and words that are easy to picture (concreteness).
 - **Same-sound merging.** Spellings with the same standard pronunciation (meat/meet, nose/knows) become one entry; other common spellings are shown after a slash.
 
@@ -42,6 +42,7 @@ Sources, downloaded into `data/sources/` on first run:
 - Concreteness ratings: Brysbaert, Warriner & Kuperman (2014), "Concreteness ratings for 40 thousand generally known English word lemmas", *Behavior Research Methods* 46, 904–911.
 - [ENABLE](https://github.com/dolph/dictionary) word list (public domain).
 - [Hunspell en_US](https://github.com/wooorm/dictionaries) from SCOWL (MIT/BSD-style).
+- [random-name](https://github.com/dominictarr/random-name) first-names list.
 - [LemmInflect](https://github.com/bjascob/LemmInflect) for base forms.
 
 ## App
