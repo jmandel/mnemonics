@@ -135,18 +135,37 @@ body {
 }
 
 .words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tier-line {
   margin: 0;
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 0 0.65rem;
 }
 
-.word.tier-1 {
-  color: color-mix(in srgb, var(--ink) 72%, var(--bg));
+/* Lower tiers are lighter but stay readable; the label marks the alphabet restart. */
+.tier-line.tier-1 {
+  color: color-mix(in srgb, var(--ink) 74%, var(--bg));
 }
 
-.word.tier-2 {
-  color: color-mix(in srgb, var(--ink) 45%, var(--bg));
+.tier-line.tier-2 {
+  color: color-mix(in srgb, var(--ink) 58%, var(--bg));
+}
+
+.tier-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0 0.3rem;
 }
 
 .alt {

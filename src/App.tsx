@@ -43,7 +43,7 @@ function displayWord(entry: Word) {
 
 function WordItem({ entry }: { entry: Word }) {
   return (
-    <span className={`word tier-${entry.tier}`}>
+    <span className="word">
       {displayWord(entry)}
       {entry.alternates.length > 0 ? (
         <span className="alt">/{entry.alternates.join("/")}</span>
@@ -52,31 +52,43 @@ function WordItem({ entry }: { entry: Word }) {
   );
 }
 
+const TIER_LABELS = ["", "familiar", "rare"];
+
 function ChunkRow({ chunk, level }: { chunk: string; level: Level }) {
   const [open, setOpen] = useState(false);
   const words = wordsFor(chunk);
   const atLevel = countAtLevel(words, level);
   const visible = open ? words : words.slice(0, atLevel);
   const hidden = words.length - visible.length;
+  const tiers = ([0, 1, 2] as const)
+    .map((tier) => visible.filter((entry) => entry.tier === tier))
+    .map((entries, tier) => ({ tier, entries }))
+    .filter(({ entries }) => entries.length > 0);
 
   return (
     <div className="chunk" data-testid="chunk">
       <span className="chunk-digits">{chunk}</span>
-      <p className="words">
-        {visible.map((entry) => (
-          <WordItem entry={entry} key={entry.word} />
+      <div className="words">
+        {tiers.map(({ tier, entries }, index) => (
+          <p className={`tier-line tier-${tier}`} data-tier={tier} key={tier}>
+            {/* The first line needs no label; later ones mark where the alphabet restarts. */}
+            {index > 0 || tier > 0 ? <span className="tier-label">{TIER_LABELS[tier]}</span> : null}
+            {entries.map((entry) => (
+              <WordItem entry={entry} key={entry.word} />
+            ))}
+            {index === tiers.length - 1 && hidden > 0 ? (
+              <button className="more-words" type="button" onClick={() => setOpen(true)}>
+                +{hidden} rarer
+              </button>
+            ) : null}
+            {index === tiers.length - 1 && open && words.length > atLevel ? (
+              <button className="more-words" type="button" onClick={() => setOpen(false)}>
+                less
+              </button>
+            ) : null}
+          </p>
         ))}
-        {hidden > 0 ? (
-          <button className="more-words" type="button" onClick={() => setOpen(true)}>
-            +{hidden}
-          </button>
-        ) : null}
-        {open && words.length > atLevel ? (
-          <button className="more-words" type="button" onClick={() => setOpen(false)}>
-            less
-          </button>
-        ) : null}
-      </p>
+      </div>
     </div>
   );
 }
@@ -154,7 +166,7 @@ export function App() {
             ? level < 2
               ? `No split uses only ${LEVELS[level]!.label} words. Try ${LEVELS[level + 1]!.label}.`
               : "No way to split these digits into words."
-            : `${breakdowns.length}${breakdowns.length >= 500 ? "+" : ""} ways to split · fewest chunks first · faded = less common`}
+            : `${breakdowns.length}${breakdowns.length >= 500 ? "+" : ""} ways to split · fewest chunks first`}
         </p>
       ) : (
         <p className="summary">
