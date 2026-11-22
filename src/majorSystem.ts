@@ -22,7 +22,7 @@ export const RULES: Array<[string, string]> = [
   ["The ng sound (sing) is 27", "sing = 027, fishing = 8627. Before k or g it's just n: bank = 927, finger = 8274. In engine, n and g are separate sounds: 262."],
   ["-ed is t or d", "jumped = 6391, played = 951."],
   ["Use the standard American pronunciation", "The word list follows the CMU Pronouncing Dictionary."],
-  ["r after a vowel counts", "car = 74, bird = 941."],
+  ["Every r sound counts, including -er and -or", "car = 74, bird = 941, butter = 914, warrior = 44 (war-ri-or has two r sounds)."],
 ];
 
 export const SKILL_NOTES: Record<string, string> = {

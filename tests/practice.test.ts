@@ -20,7 +20,7 @@ test("every example the About page gives matches the word data", () => {
     ["phone", "82"], ["knee", "2"], ["butter", "914"], ["lamb", "53"], ["knight", "21"],
     ["walk", "7"], ["box", "970"], ["tax", "170"], ["sing", "027"], ["bank", "927"],
     ["finger", "8274"], ["jumped", "6391"], ["played", "951"], ["car", "74"], ["bird", "941"],
-    ["fishing", "8627"], ["engine", "262"], ["accent", "7021"], ["queen", "72"], ["bear", "94"],
+    ["fishing", "8627"], ["engine", "262"], ["accent", "7021"], ["queen", "72"], ["bear", "94"], ["warrior", "44"],
   ];
   for (const [word, digits] of claims) {
     expect(`${word} ${digitsOfWord(word)}`).toBe(`${word} ${digits}`);
@@ -66,6 +66,13 @@ test("the same seed makes the same phrases, and shared runs round-trip", () => {
     expect(phrase.length).toBeGreaterThanOrEqual(2);
     expect(digitOwners(phrase).length).toBe(phraseDigits(phrase).length);
   }
+});
+
+test("top-level prompts are long numbers", () => {
+  const next = makeGenerator(seededRandom(3), 3, null);
+  const lengths = Array.from({ length: 200 }, () => phraseDigits(next()).length);
+  expect(Math.max(...lengths)).toBeGreaterThanOrEqual(12);
+  expect(lengths.reduce((sum, length) => sum + length, 0) / lengths.length).toBeGreaterThan(7);
 });
 
 test("level 0 prompts are single short words", () => {

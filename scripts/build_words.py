@@ -104,7 +104,7 @@ PRACTICE_AVOID = {
     "rapist", "rape", "lynching", "hooker", "hookers", "cleavage", "lingerie", "diarrhea",
     "laxative", "anus", "sex", "sexy", "nude", "naked", "penis", "vagina", "nipple", "condom",
     "semen", "sperm", "pubic", "testicle", "testicles", "scrotum", "urine", "feces", "vomit",
-    "corpse", "suicide", "heroin", "cocaine", "brothel", "pimp", "bong",
+    "corpse", "suicide", "heroin", "cocaine", "brothel", "pimp", "bong", "douche",
 }
 
 # CMUdict pronunciations that are simply wrong for the Major System; these words are
@@ -417,7 +417,7 @@ def is_practice_word(word, tier, is_name, concrete, digits, phones, avoid):
     consonants = [phone for phone in phones if phone in SOUND_LABELS]
     return (
         tier == 0 and not is_name and concrete and re.fullmatch("[a-z]{3,}", word) is not None
-        and 1 <= len(digits) <= 5
+        and 1 <= len(digits) <= 6
         and is_base_form(word)
         and is_clean(word, avoid)
         # Spelling and pronunciation agree (not "jalapeno" = 592 or "hygienist").

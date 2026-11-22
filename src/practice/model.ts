@@ -100,12 +100,13 @@ export function examplesFor(skill: string, count = 6) {
     .slice(0, count);
 }
 
-// Prompts grow with skill: everyday short words, longer words, pairs, then triples.
+// Prompts grow with skill, from 1-3 digit everyday words up to 2-3 word phrases of
+// as many as 18 digits. Digit limits are per word.
 export const LEVELS = [
-  { name: "short words", words: [1, 1], maxDigits: 3, minZipf: 4.2 },
-  { name: "longer words", words: [1, 1], maxDigits: 5, minZipf: 3.6 },
-  { name: "word pairs", words: [2, 2], maxDigits: 3, minZipf: 3.6 },
-  { name: "word triples", words: [3, 3], maxDigits: 3, minZipf: 0 },
+  { name: "short words", words: [1, 1], minDigits: 1, maxDigits: 3, minZipf: 4.2 },
+  { name: "longer words", words: [1, 1], minDigits: 3, maxDigits: 6, minZipf: 3.6 },
+  { name: "word pairs", words: [2, 2], minDigits: 2, maxDigits: 4, minZipf: 3.6 },
+  { name: "long phrases", words: [2, 3], minDigits: 2, maxDigits: 6, minZipf: 0 },
 ];
 
 // The sounds each spelling pattern is about, so a miss is only charged to a pattern
@@ -206,7 +207,8 @@ function pickWeighted<T>(items: Array<[T, number]>, random: () => number) {
 // without one (a shared challenge) it depends only on the seed.
 export function makeGenerator(random: () => number, level: number, store: Store | null) {
   const shape = LEVELS[Math.min(level, LEVELS.length - 1)]!;
-  const fits = (entry: PracticeWord) => entry.digits.length <= shape.maxDigits && entry.zipf >= shape.minZipf;
+  const fits = (entry: PracticeWord) =>
+    entry.digits.length >= shape.minDigits && entry.digits.length <= shape.maxDigits && entry.zipf >= shape.minZipf;
   const pool = words.filter(fits);
   const average = store ? averageMs(store) : 0;
   const recent: string[] = store ? store.recent : [];
