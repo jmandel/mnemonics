@@ -33,10 +33,9 @@ DOWNLOADS = {
     "prevalence.xlsx": "https://static-content.springer.com/esm/art%3A10.3758%2Fs13428-018-1077-9/MediaObjects/13428_2018_1077_MOESM2_ESM.xlsx",
     # Hunspell en_US (from SCOWL) keeps capitalization: "India", "FBI", "email".
     "en_US.dic": "https://raw.githubusercontent.com/wooorm/dictionaries/main/dictionaries/en/index.dic",
-    "ldnoobw.txt": "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en",
 }
 
-# Slurs are dropped outright; other vulgar words (ldnoobw.txt) are only demoted to rare.
+# Slurs are dropped. Swear words are kept like any other word.
 SLURS = {
     "chink", "chinks", "coon", "coons", "dyke", "dykes", "fag", "fags", "faggot", "faggots",
     "gook", "gooks", "kike", "kikes", "nigga", "niggas", "nigger", "niggers", "raghead",
@@ -101,10 +100,6 @@ def load_cased_words():
         if word:
             cased[word.lower()].add(word)
     return cased
-
-
-def load_vulgar():
-    return {line.strip() for line in (SOURCES / "ldnoobw.txt").read_text().splitlines() if " " not in line.strip()}
 
 
 def lemmas(word):
@@ -186,7 +181,6 @@ def main():
     concreteness = load_concreteness()
     dictionary = set((SOURCES / "enable1.txt").read_text().split())
     cased = load_cased_words()
-    vulgar = load_vulgar()
 
     # word -> pronunciations in CMUdict order; the first is the standard one.
     pronunciations = defaultdict(list)
@@ -224,8 +218,6 @@ def main():
                 if is_name and zipf == 0:
                     continue
                 tier, score, concrete = classify(word, zipf, is_name, prevalence, concreteness)
-                if word in vulgar:
-                    tier = 2
                 ranked.append((tier, -score, word, shown, is_name, concrete))
             ranked.sort()
             # Same pronunciation, same digits: one mnemonic. Keep the best spelling.
