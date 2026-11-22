@@ -164,3 +164,32 @@ export function findBreakdowns(
 export function fewestChunks(digits: string, level: Level, pins: Pin[] = []) {
   return findBreakdowns(digits, level, pins, 1)[0]?.chunks.length ?? null;
 }
+
+// Best example word for a number, from the build's ranking (common, picturable first).
+export function exampleWord(digits: string) {
+  const entries = (rawWords as unknown as Record<string, RawEntry[]>)[digits] ?? [];
+  const lower = ([word]: RawEntry) => word === word.toLowerCase();
+  const best =
+    entries.find((entry) => entry[1] === 0 && entry[2] === 1 && lower(entry)) ??
+    entries.find((entry) => entry[1] === 0 && entry[2] === 1) ??
+    entries.find((entry) => entry[1] === 0 && lower(entry)) ??
+    entries[0];
+  return best?.[0] ?? null;
+}
+
+let wordDigits: Map<string, string> | null = null;
+
+// The digits a word is filed under, including other spellings ("meet" for "meat").
+export function digitsOfWord(word: string) {
+  if (!wordDigits) {
+    wordDigits = new Map();
+    for (const [digits, entries] of getDictionary()) {
+      for (const entry of entries) {
+        for (const spelling of [entry.word, ...entry.alternates]) {
+          wordDigits.set(spelling.toLowerCase(), digits);
+        }
+      }
+    }
+  }
+  return wordDigits.get(word.trim().toLowerCase()) ?? null;
+}

@@ -8,6 +8,9 @@ familiarity tier, display casing (names and acronyms), and same-sound spellings 
 Output: {digits: [[shown, tier, concrete, "other/spellings"?], ...]}, tier 0 = common,
 1 = familiar, 2 = obscure; concrete = 1 for easy-to-picture words.
 
+Also writes practice.json for the practice page: [[word, "f8 i sh6 ng27"-style sounds,
+"tag,tag"], ...] for common, picturable words.
+
 Run from the repo root:  uv run --locked scripts/build_words.py
 Every input is downloaded from a pinned URL into data/sources/ (git-ignored) and
 checked against its sha256, so a rebuild reproduces words.json byte for byte.
@@ -29,6 +32,7 @@ from wordfreq import zipf_frequency
 ROOT = Path(__file__).resolve().parent.parent
 SOURCES = ROOT / "data" / "sources"
 OUT = ROOT / "words.json"
+PRACTICE_OUT = ROOT / "practice.json"
 
 # name: (pinned URL, sha256). GitHub sources are pinned to a commit.
 DOWNLOADS = {
@@ -202,9 +206,67 @@ def classify(word, zipf, is_name, prevalence, concreteness, first_names):
     score = zipf + (2.0 * ((known or 0.5) - 0.9) if not is_name else -0.6)
     if conc is not None:
         score += 0.35 * (conc - 3.0)
-    # Easy to picture: a concreteness rating of 4+ on the 1-5 scale (turtle, piano).
-    concrete = conc is not None and conc >= 4.0
+    # Easy to picture: the word itself is rated 4+ on the 1-5 concreteness scale (turtle,
+    # piano). Not inherited from a base form, which would make "could" picturable via "can".
+    concrete = concreteness.get(word, 0) >= 4.0
     return tier, round(score, 3), concrete
+
+
+SILENT_SPELLINGS = [
+    (r"^kn", "n"), (r"^gn", "n"), (r"^wr", "r"), (r"^ps", "s"), (r"^pn", "n"),
+    (r"mb$", "m"), (r"mn$", "m"), (r"([ao])l([km])", r"\1\2"), (r"ould", "ood"),
+    (r"gh(t|$)", r"\1"), (r"stle$", "sel"), (r"sten$", "sen"),
+]
+LETTER_DIGITS = {
+    "s": "0", "z": "0", "t": "1", "d": "1", "n": "2", "m": "3", "r": "4", "l": "5",
+    "j": "6", "k": "7", "g": "7", "q": "7", "f": "8", "v": "8", "p": "9", "b": "9",
+}
+
+
+def spelled_digits(word):
+    """Rough Major System digits from spelling alone, used to choose between a word's
+    pronunciations: "around" spells 421, "balk" 97 (silent l)."""
+    w = re.sub("[^a-z]", "", word)
+    for pattern, replacement in SILENT_SPELLINGS:
+        w = re.sub(pattern, replacement, w)
+    w = re.sub(r"([b-df-hj-np-tv-z])\1", r"\1", w)  # double letters are one sound
+    w = w.replace("tch", "ch").replace("ph", "f").replace("ck", "k").replace("qu", "k").replace("x", "ks")
+    w = re.sub(r"c(?=[eiy])", "s", w).replace("c", "k")
+    w = w.replace("th", "t").replace("sh", "j").replace("ch", "j")
+    return "".join(LETTER_DIGITS.get(ch, "") for ch in w)
+
+
+def edit_distance(a, b):
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
+def choose_pronunciation(word, prons):
+    """The one pronunciation a word is filed under, or None if it is ambiguous.
+
+    Pronunciations that differ only by a dropped consonant ("around" as 42 or 421)
+    resolve to the one closest to the spelling. Ones with the same number of
+    consonants but different digits ("amateur" 314 or 364) are true conflicts.
+    """
+    by_digits = {}
+    for phones in prons:
+        digits = digits_for(phones)
+        if digits:
+            by_digits.setdefault(digits, phones)
+    if not by_digits:
+        return None
+    if len(by_digits) == 1:
+        return next(iter(by_digits.values()))
+    lengths = [len(digits) for digits in by_digits]
+    if len(set(lengths)) < len(lengths):
+        return None
+    spelled = spelled_digits(word)
+    best = min(by_digits, key=lambda digits: (edit_distance(digits, spelled), -len(digits)))
+    return by_digits[best]
 
 
 def keep_spelling(word, zipf, dictionary, prevalence, cased):
@@ -232,6 +294,59 @@ def keep_spelling(word, zipf, dictionary, prevalence, cased):
     return True
 
 
+SOUND_LABELS = {
+    "S": "s", "Z": "z", "T": "t", "D": "d", "TH": "th", "DH": "th", "N": "n", "M": "m",
+    "R": "r", "ER": "r", "L": "l", "CH": "ch", "JH": "j", "SH": "sh", "ZH": "zh",
+    "K": "k", "G": "g", "NG": "ng", "F": "f", "V": "v", "P": "p", "B": "b",
+}
+
+
+def sounds_for(phones):
+    """Consonant sounds with their digits, e.g. "f8 sh6 ng27" for "fishing"."""
+    out = []
+    for index, phone in enumerate(phones):
+        if phone == "NG":
+            following = phones[index + 1] if index + 1 < len(phones) else None
+            digits = "2" if following in ("K", "G") else "27"
+        else:
+            digits = digits_for([phone])
+        if digits:
+            out.append(SOUND_LABELS[phone] + digits)
+    return " ".join(out)
+
+
+def spelling_tags(word, phones):
+    """Spelling patterns that trip people up, tracked as practice skills."""
+    tags = []
+    if re.search(r"c[eiy]", word) and ("S" in phones or "SH" in phones):
+        tags.append("soft c")
+    if re.search(r"g[eiy]", word) and "JH" in phones:
+        tags.append("soft g")
+    if "x" in word:
+        tags.append("x")
+    if "ph" in word or ("gh" in word and "F" in phones):
+        tags.append("ph/gh")
+    if re.search(r"^(kn|gn|wr|ps)|mb$|[ao]l[km]|gh(t|$)", word):
+        tags.append("silent")
+    if re.search(r"([b-df-hj-np-tv-z])\1", word):
+        tags.append("double")
+    if word.endswith("ed") and phones[-1] in ("T", "D"):
+        tags.append("-ed")
+    if "NG" in phones:
+        tags.append("ng")
+    if "ER" in phones and "r" in word:
+        tags.append("er")
+    return tags
+
+
+def is_practice_word(word, tier, is_name, concrete, digits):
+    # Common, picturable, plain-letter words with a short answer.
+    return (
+        tier == 0 and not is_name and concrete and re.fullmatch("[a-z]{3,}", word) is not None
+        and 1 <= len(digits) <= 5
+    )
+
+
 def main():
     fetch_sources()
     prevalence = load_prevalence()
@@ -249,19 +364,18 @@ def main():
         word = re.sub(r"\(\d+\)$", "", head).lower()
         pronunciations[word].append([re.sub(r"\d", "", p) for p in phones])
 
-    # digits -> standard pronunciation -> spellings. Grouping by the standard
-    # pronunciation means only true homophones merge (meat/meet, not cars/cause).
+    # digits -> pronunciation -> spellings. Each word is filed under exactly one
+    # pronunciation, and grouping by it means only true homophones merge (meat/meet).
     buckets = defaultdict(lambda: defaultdict(set))
+    chosen = {}
     for word, prons in pronunciations.items():
-        primary = digits_for(prons[0])
-        for phones in prons:
-            digits = digits_for(phones)
-            # Casual variants that drop a consonant ("twenty" as "twenny", "last" as
-            # "lass") would file the word under the wrong number.
-            if digits and len(digits) == len(primary):
-                buckets[digits][" ".join(prons[0])].add(word)
+        phones = choose_pronunciation(word, prons)
+        if phones is not None:
+            chosen[word] = phones
+            buckets[digits_for(phones)][" ".join(phones)].add(word)
 
     out = {}
+    practice = []
     for digits in sorted(buckets):
         entries = []
         seen = set()
@@ -287,6 +401,8 @@ def main():
             if not ranked:
                 continue
             tier, neg_score, word, shown, is_name, concrete = ranked[0]
+            if is_practice_word(word, tier, is_name, concrete, digits):
+                practice.append([word, sounds_for(chosen[word]), ",".join(spelling_tags(word, chosen[word]))])
             # Mention other common real-word spellings (meat/meet, nose/knows).
             others = [entry[3] for entry in ranked[1:] if entry[0] == 0 and not entry[4]]
             seen.update(entry[2] for entry in ranked)
@@ -302,6 +418,9 @@ def main():
     OUT.write_text(json.dumps(out, separators=(",", ":")))
     total = sum(len(v) for v in out.values())
     print(f"{len(out)} digit keys, {total} words -> {OUT.name} ({OUT.stat().st_size // 1024} KB)", file=sys.stderr)
+    practice.sort()
+    PRACTICE_OUT.write_text(json.dumps(practice, separators=(",", ":")))
+    print(f"{len(practice)} practice words -> {PRACTICE_OUT.name} ({PRACTICE_OUT.stat().st_size // 1024} KB)", file=sys.stderr)
 
 
 if __name__ == "__main__":

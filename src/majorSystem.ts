@@ -1,0 +1,56 @@
+// Reference content for the About page and practice notes.
+
+export const DIGITS: Array<{ digit: string; sounds: string; spelled: string; hook: string }> = [
+  { digit: "0", sounds: "s z", spelled: "s, z, soft c (city)", hook: "z is the first letter of zero" },
+  { digit: "1", sounds: "t d th", spelled: "t, d, th", hook: "t and d have one downstroke" },
+  { digit: "2", sounds: "n", spelled: "n", hook: "n has two downstrokes" },
+  { digit: "3", sounds: "m", spelled: "m", hook: "m has three downstrokes" },
+  { digit: "4", sounds: "r", spelled: "r", hook: "four ends in r" },
+  { digit: "5", sounds: "l", spelled: "l", hook: "L is 50 in Roman numerals" },
+  { digit: "6", sounds: "j sh ch zh", spelled: "j, sh, ch, soft g (gem)", hook: "a mirrored J looks like 6" },
+  { digit: "7", sounds: "k g", spelled: "k, hard c, hard g, q, ck", hook: "K is two 7s back to back" },
+  { digit: "8", sounds: "f v", spelled: "f, v, ph, gh (laugh)", hook: "a cursive f has two loops, like 8" },
+  { digit: "9", sounds: "p b", spelled: "p, b", hook: "p is a mirrored 9" },
+];
+
+export const RULES: Array<[string, string]> = [
+  ["Sounds, not letters", "Only what you hear counts: phone = 82, knee = 2."],
+  ["Vowels are free", "So are w, h and y. Use them to make any word you like."],
+  ["Double letters are one sound", "butter = 914, not 9114."],
+  ["Silent letters don't count", "lamb = 53, knight = 21, walk = 7."],
+  ["x is k + s", "box = 970, tax = 170."],
+  ["ng is n + g = 27", "sing = 027. Before k or g it's just n: bank = 927, finger = 8274."],
+  ["-ed is t or d", "jumped = 6391, played = 951."],
+  ["r after a vowel counts", "car = 74, bird = 941."],
+];
+
+export const SKILL_NOTES: Record<string, string> = {
+  s: "s is 0",
+  z: "z is 0",
+  t: "t is 1",
+  d: "d is 1",
+  th: "th is 1",
+  n: "n is 2 (and ng before k or g)",
+  m: "m is 3",
+  r: "r is 4, including er",
+  l: "l is 5",
+  j: "j and soft g are 6",
+  sh: "sh is 6",
+  ch: "ch is 6",
+  zh: "zh, as in vision, is 6",
+  k: "k, hard c and ck are 7",
+  g: "hard g is 7",
+  ng: "ng is 27 (n + g); before k or g it's just 2",
+  f: "f and ph are 8",
+  v: "v is 8",
+  p: "p is 9",
+  b: "b is 9",
+  "soft c": "c before e, i or y sounds like s: 0",
+  "soft g": "g before e, i or y often sounds like j: 6",
+  x: "x is k + s: 70",
+  "ph/gh": "ph and a sounded gh are f: 8",
+  silent: "silent letters (kn, wr, mb, alk) count for nothing",
+  double: "double letters are one sound",
+  "-ed": "-ed adds t or d: 1",
+  er: "er is r: 4",
+};

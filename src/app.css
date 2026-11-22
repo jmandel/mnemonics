@@ -23,6 +23,37 @@ body {
   padding: 0 1rem 3rem;
 }
 
+.site-nav {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 0.6rem 1rem 0.2rem;
+  display: flex;
+  align-items: baseline;
+  gap: 1.1rem;
+  font-size: 0.95rem;
+}
+
+.brand {
+  font-weight: 650;
+  margin-right: auto;
+}
+
+.site-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.3rem 0;
+}
+
+.site-nav a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--ink);
+}
+
+a {
+  color: inherit;
+}
+
 .top {
   position: sticky;
   top: 0;
@@ -36,7 +67,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.2rem 1rem;
   margin-bottom: 0.4rem;
 }
@@ -336,5 +367,477 @@ h1 {
   .key {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
+  }
+}
+
+/* ---------- Practice ---------- */
+
+.practice {
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.6rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.practice-status {
+  height: 1.8rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock {
+  font: 650 1.1rem var(--mono);
+  min-width: 3ch;
+}
+
+.clock.low {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.score {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.stop {
+  margin-left: auto;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Fixed height so the phrase snaps in without moving the keypad. */
+.prompt {
+  height: 8.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+.start {
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+  font-size: 1.7rem;
+  font-weight: 650;
+  line-height: 1.2;
+  color: var(--bg);
+  background: var(--ink);
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.start-detail {
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.phrase-text {
+  margin: 0;
+  font-size: clamp(1.6rem, 8vw, 2.3rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.phrase-text.pop {
+  animation: pop 140ms ease-out;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0.2;
+    transform: translateY(4px);
+  }
+}
+
+.miss-view {
+  animation: shake 220ms ease-in-out;
+}
+
+@keyframes shake {
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.miss-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.breakdown-words {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1.2rem;
+}
+
+.breakdown-word {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.breakdown-label {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.breakdown-sounds {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.breakdown-sounds b {
+  color: var(--ink);
+  font-family: var(--mono);
+}
+
+/* The missed sound: boxed and bold, not just colored. */
+.sound.missed {
+  color: var(--ink);
+  font-weight: 700;
+  outline: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: 0 0.25rem;
+}
+
+.typed {
+  margin: 0;
+  height: 2.2rem;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  gap: 0.15rem;
+  font: 600 1.6rem/1.3 var(--mono);
+}
+
+.slot {
+  min-width: 1ch;
+  color: var(--muted);
+}
+
+.slot.done {
+  color: var(--ink);
+}
+
+.slot.wrong {
+  color: var(--ink);
+  text-decoration: underline wavy;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+  touch-action: manipulation;
+}
+
+.key-button {
+  height: 3.9rem;
+  font: inherit;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 6%, var(--bg));
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.key-button:active {
+  background: color-mix(in srgb, var(--ink) 16%, var(--bg));
+}
+
+.key-digit {
+  font: 600 1.6rem/1 var(--mono);
+}
+
+.key-sounds {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.result {
+  width: 100%;
+}
+
+.result p {
+  margin: 0.15rem 0;
+}
+
+.result-score {
+  font-size: 1.1rem;
+}
+
+.result-score b {
+  font: 700 2.4rem/1 var(--mono);
+}
+
+.result-detail {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem !important;
+}
+
+.result-actions button {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.result-actions .again {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+  font-weight: 600;
+}
+
+.practice-panel {
+  border-top: 1px solid var(--rule);
+  padding-top: 0.6rem;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.practice-panel h2 {
+  font-size: 0.85rem;
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.weak-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.weak {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.weak.active {
+  border-color: var(--ink);
+}
+
+.weak-detail {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.weak-note,
+.history-line {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.history-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 2.5rem;
+  margin-top: 0.4rem;
+}
+
+.bar {
+  flex: 1;
+  max-width: 0.8rem;
+  background: color-mix(in srgb, var(--ink) 30%, var(--bg));
+  border-radius: 2px 2px 0 0;
+}
+
+.bar.best {
+  background: var(--ink);
+}
+
+/* ---------- About ---------- */
+
+.about {
+  max-width: 44rem;
+  padding-top: 0.6rem;
+}
+
+.about h2 {
+  font-size: 1rem;
+  margin: 1.4rem 0 0.4rem;
+}
+
+.about-lead {
+  margin: 0.3rem 0 0.8rem;
+}
+
+.about-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.try-word {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin: 0 0 1rem;
+}
+
+.try-word input {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.35rem 0.55rem;
+  width: 11rem;
+}
+
+.try-result {
+  color: var(--muted);
+}
+
+.try-result b {
+  font: 650 1.3rem var(--mono);
+  color: var(--ink);
+}
+
+.code-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.code-table th {
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0.2rem 0.5rem 0.3rem 0;
+}
+
+.code-table td {
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  border-top: 1px solid var(--rule);
+  vertical-align: baseline;
+}
+
+.code-digit {
+  font: 700 1.3rem var(--mono);
+  width: 2.2rem;
+}
+
+.hook-col {
+  color: var(--muted);
+}
+
+.rules {
+  margin: 0;
+}
+
+.rules div {
+  display: grid;
+  grid-template-columns: 13rem 1fr;
+  gap: 0.8rem;
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--rule);
+}
+
+.rules dt {
+  font-weight: 600;
+}
+
+.rules dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+.peg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
+  gap: 0.25rem;
+}
+
+.peg {
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  padding: 0.2rem 0.3rem;
+  border-radius: 4px;
+  text-decoration: none;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.peg:hover {
+  background: color-mix(in srgb, var(--ink) 8%, var(--bg));
+}
+
+.peg-digits {
+  font: 600 0.85rem var(--mono);
+  color: var(--muted);
+}
+
+.peg-word {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 34rem) {
+  .hook-col {
+    display: none;
+  }
+
+  .rules div {
+    grid-template-columns: 1fr;
+    gap: 0;
   }
 }

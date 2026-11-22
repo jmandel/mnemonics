@@ -22,8 +22,8 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Rebuild words.json from pinned sources
+      - name: Rebuild words.json and practice.json from pinned sources
         run: uv run --locked scripts/build_words.py
 
       - name: Fail if it differs from the committed file
-        run: git diff --exit-code --stat words.json
+        run: git diff --exit-code --stat words.json practice.json
