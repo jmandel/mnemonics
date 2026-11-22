@@ -1,89 +1,80 @@
-import rawDictionaryData from "../cmudict.json";
+import rawWords from "../words.json";
 
-type RawDictionary = Record<string, Array<{ word: string; freq: number }>>;
+// Built by scripts/build_words.py: digits -> [word, tier, isName, otherSpellings?],
+// best first. Tier 0 = common, 1 = familiar, 2 = obscure.
+type RawEntry = [string, number, number] | [string, number, number, string];
 
-export type Word = { word: string; freq: number; tier: 0 | 1 | 2 };
+export type Level = 0 | 1 | 2;
+
+export type Word = {
+  word: string;
+  tier: Level;
+  isName: boolean;
+  alternates: string[];
+};
 
 export type Breakdown = {
   key: string;
   chunks: string[];
-  score: number;
 };
 
 const MAX_BREAKDOWNS = 500;
 
 let dictionary: Map<string, Word[]> | null = null;
 
-// Strip CMUdict variant markers like "read(2)", merge duplicates, sort most frequent first.
-// tier: 0 = top 10% by frequency, 1 = above median, 2 = rare.
-export function getDictionary() {
-  if (dictionary) {
-    return dictionary;
-  }
-
-  dictionary = new Map();
-  const raw = rawDictionaryData as RawDictionary;
-  const freqs = Object.values(raw)
-    .flat()
-    .map((entry) => entry.freq)
-    .sort((left, right) => left - right);
-  const p50 = freqs[Math.floor(freqs.length * 0.5)] ?? 0;
-  const p90 = freqs[Math.floor(freqs.length * 0.9)] ?? 0;
-
-  for (const [digits, entries] of Object.entries(raw)) {
-    const byWord = new Map<string, Word>();
-
-    for (const entry of entries) {
-      const word = entry.word.replace(/\(\d+\)$/u, "").trim();
-
-      // Skip letter names and abbreviations like "j", "j." or "a.s".
-      if (word.length < 2 || !/[a-z]/iu.test(word) || word.includes(".")) {
-        continue;
-      }
-
-      const existing = byWord.get(word.toLowerCase());
-
-      if (!existing || entry.freq > existing.freq) {
-        const freq = Math.max(0, entry.freq);
-        byWord.set(word.toLowerCase(), { word, freq, tier: freq >= p90 ? 0 : freq >= p50 ? 1 : 2 });
-      }
-    }
-
-    const words = [...byWord.values()].sort(
-      (left, right) => right.freq - left.freq || left.word.localeCompare(right.word),
+function getDictionary() {
+  if (!dictionary) {
+    dictionary = new Map(
+      Object.entries(rawWords as unknown as Record<string, RawEntry[]>).map(([digits, entries]) => [
+        digits,
+        entries.map(([word, tier, isName, alternates]) => ({
+          word,
+          tier: tier as Level,
+          isName: isName === 1,
+          alternates: alternates ? alternates.split("/") : [],
+        })),
+      ]),
     );
-
-    if (words.length > 0) {
-      dictionary.set(digits, words);
-    }
   }
 
   return dictionary;
 }
 
+// All words for a chunk, best first.
 export function wordsFor(digits: string) {
   return getDictionary().get(digits) ?? [];
 }
 
-// Mean log-frequency of each chunk's most common word; higher means easier words.
-function breakdownScore(chunks: string[]) {
-  const total = chunks.reduce((sum, chunk) => sum + Math.log10((wordsFor(chunk)[0]?.freq ?? 0) + 1), 0);
-  return total / chunks.length;
+// Words are sorted by tier, so the ones at or below a level form a prefix.
+export function countAtLevel(words: Word[], level: Level) {
+  let count = 0;
+
+  while (count < words.length && words[count]!.tier <= level) {
+    count += 1;
+  }
+
+  return count;
 }
 
-// Every way to cut the digits into chunks that each have at least one word,
-// fewest chunks first, then by how common each chunk's top word is.
-export function findBreakdowns(digits: string, limit = MAX_BREAKDOWNS) {
-  const dict = getDictionary();
-  const n = digits.length;
+// Higher is better: an easy best word, then more choices.
+function chunkScore(chunk: string, level: Level) {
+  const words = wordsFor(chunk);
+  return (2 - (words[0]?.tier ?? 2)) * 2 + Math.log2(countAtLevel(words, level) + 1) * 0.5;
+}
 
-  // canFinish[i]: digits[i..] can be fully split into dictionary chunks.
+// Every way to cut the digits into chunks that each have a word at the given level,
+// fewest chunks first, then by how good each chunk's words are.
+export function findBreakdowns(digits: string, level: Level = 2, limit = MAX_BREAKDOWNS) {
+  const n = digits.length;
+  const usable = (chunk: string) => countAtLevel(wordsFor(chunk), level) > 0;
+
+  // canFinish[i]: digits[i..] can be fully split into usable chunks.
   const canFinish = new Array<boolean>(n + 1).fill(false);
   canFinish[n] = true;
 
   for (let start = n - 1; start >= 0; start -= 1) {
     for (let end = start + 1; end <= n; end += 1) {
-      if (canFinish[end] && dict.has(digits.slice(start, end))) {
+      if (canFinish[end] && usable(digits.slice(start, end))) {
         canFinish[start] = true;
         break;
       }
@@ -99,7 +90,7 @@ export function findBreakdowns(digits: string, limit = MAX_BREAKDOWNS) {
   // Enumerate by exact chunk count so short breakdowns are found first even when
   // the total number of splits is huge.
   for (let parts = 1; parts <= n && results.length < limit; parts += 1) {
-    const batch: Breakdown[] = [];
+    const batch: Array<Breakdown & { score: number }> = [];
     const chunks: string[] = [];
 
     const walk = (start: number) => {
@@ -109,7 +100,8 @@ export function findBreakdowns(digits: string, limit = MAX_BREAKDOWNS) {
 
       if (start === n) {
         if (chunks.length === parts) {
-          batch.push({ key: chunks.join("|"), chunks: [...chunks], score: breakdownScore(chunks) });
+          const score = chunks.reduce((sum, chunk) => sum + chunkScore(chunk, level), 0) / parts;
+          batch.push({ key: chunks.join("|"), chunks: [...chunks], score });
         }
         return;
       }
@@ -121,7 +113,7 @@ export function findBreakdowns(digits: string, limit = MAX_BREAKDOWNS) {
       for (let end = start + 1; end <= n; end += 1) {
         const chunk = digits.slice(start, end);
 
-        if (canFinish[end] && dict.has(chunk)) {
+        if (canFinish[end] && usable(chunk)) {
           chunks.push(chunk);
           walk(end);
           chunks.pop();
@@ -131,7 +123,7 @@ export function findBreakdowns(digits: string, limit = MAX_BREAKDOWNS) {
 
     walk(0);
     batch.sort((left, right) => right.score - left.score);
-    results.push(...batch);
+    results.push(...batch.map(({ key, chunks }) => ({ key, chunks })));
   }
 
   return results;

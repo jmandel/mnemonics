@@ -15,8 +15,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "tests/**/*.ts",
-    "scripts/**/*.ts"
+    "tests/**/*.ts"
   ],
   "exclude": [
     "archive",

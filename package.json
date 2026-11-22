@@ -6,7 +6,7 @@
     "build": "bun build index.html --outdir dist",
     "build:pages": "rm -rf dist && bun run build && touch dist/.nojekyll",
     "dev": "bun index.html",
-    "prepare:data": "bun run preprocess.js",
+    "prepare:data": "uv run scripts/build_words.py",
     "test": "bun test tests",
     "typecheck": "bunx tsc --noEmit"
   },

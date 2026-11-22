@@ -1,38 +1,54 @@
 import { expect, test } from "bun:test";
 
-import { findBreakdowns, wordsFor } from "../src/engine";
+import { countAtLevel, findBreakdowns, wordsFor } from "../src/engine";
 
-test("every breakdown covers the digits with chunks that have words", () => {
+test("every breakdown covers the digits with chunks that have words at the level", () => {
   const digits = "31415926";
-  const breakdowns = findBreakdowns(digits);
 
-  expect(breakdowns.length).toBeGreaterThan(0);
+  for (const level of [0, 1, 2] as const) {
+    const breakdowns = findBreakdowns(digits, level);
+    expect(breakdowns.length).toBeGreaterThan(0);
 
-  for (const breakdown of breakdowns) {
-    expect(breakdown.chunks.join("")).toBe(digits);
-    for (const chunk of breakdown.chunks) {
-      expect(wordsFor(chunk).length).toBeGreaterThan(0);
+    for (const breakdown of breakdowns) {
+      expect(breakdown.chunks.join("")).toBe(digits);
+      for (const chunk of breakdown.chunks) {
+        expect(countAtLevel(wordsFor(chunk), level)).toBeGreaterThan(0);
+      }
     }
   }
 });
 
+test("stricter levels give fewer splits", () => {
+  const counts = ([0, 1, 2] as const).map((level) => findBreakdowns("3141592653", level).length);
+  expect(counts[0]).toBeLessThan(counts[2]!);
+  expect(counts[0]).toBeLessThanOrEqual(counts[1]!);
+});
+
 test("breakdowns are ordered by chunk count", () => {
-  const counts = findBreakdowns("3141592653").map((breakdown) => breakdown.chunks.length);
+  const counts = findBreakdowns("3141592653", 2).map((breakdown) => breakdown.chunks.length);
   expect(counts).toEqual([...counts].sort((left, right) => left - right));
 });
 
-test("975842 includes be · california", () => {
-  const keys = findBreakdowns("975842").map((breakdown) => breakdown.key);
-  expect(keys).toContain("9|75842");
-  expect(wordsFor("75842").map((entry) => entry.word)).toContain("california");
+test("75842 is california, a common name", () => {
+  expect(findBreakdowns("975842", 0).map((breakdown) => breakdown.key)).toContain("9|75842");
+  const california = wordsFor("75842")[0];
+  expect(california?.word).toBe("california");
+  expect(california?.isName).toBe(true);
+  expect(california?.tier).toBe(0);
 });
 
-test("word lists drop CMUdict variant markers and duplicates", () => {
-  const words = wordsFor("41").map((entry) => entry.word);
-  expect(words.some((word) => /\(\d+\)$/u.test(word))).toBe(false);
-  expect(new Set(words.map((word) => word.toLowerCase())).size).toBe(words.length);
+test("words are sorted by tier and same-sound spellings are merged", () => {
+  const words = wordsFor("92");
+  expect(words.map((entry) => entry.tier)).toEqual([...words.map((entry) => entry.tier)].sort());
+  expect(words.map((entry) => entry.word)).not.toContain("pane");
+});
+
+test("obscure names stay out of common words", () => {
+  const common = wordsFor("3141").slice(0, countAtLevel(wordsFor("3141"), 0)).map((entry) => entry.word);
+  expect(common).toContain("moderate");
+  expect(common).not.toContain("moothart");
 });
 
 test("long inputs stay bounded", () => {
-  expect(findBreakdowns("31415926535897932384").length).toBeLessThanOrEqual(500);
+  expect(findBreakdowns("31415926535897932384", 2).length).toBeLessThanOrEqual(500);
 });
