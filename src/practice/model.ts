@@ -1,7 +1,11 @@
 import rawPractice from "../../practice.json";
 
-// Built by scripts/build_words.py: [word, "f8 sh6 ng27", "tag,tag"].
-type RawPracticeWord = [string, string, string];
+// Built by scripts/build_words.py: words are [word, "f8 sh6 ng27", "tag,tag", zipf*10];
+// examples maps 0-99 to the About page's example word.
+type RawPracticeWord = [string, string, string, number];
+const raw = rawPractice as unknown as { words: RawPracticeWord[]; examples: Record<string, string> };
+
+export const examples = raw.examples;
 
 export type Sound = { label: string; digits: string };
 
@@ -10,6 +14,8 @@ export type PracticeWord = {
   sounds: Sound[];
   digits: string;
   tags: string[];
+  // wordfreq Zipf: 4+ is an everyday word.
+  zipf: number;
 };
 
 // One prompt: a few words whose digits are typed in order.
@@ -39,6 +45,8 @@ export type Store = {
   cards: Record<string, Card>;
   runs: Run[];
   level: number;
+  // Words shown lately, so runs don't keep repeating them (missed words still return).
+  recent: string[];
 };
 
 export const RUN_SECONDS = 60;
@@ -47,8 +55,8 @@ const DAY = 24 * 60 * 60 * 1000;
 // Days until a learned word comes back, by Leitner box.
 const BOX_DAYS = [0, 1, 3, 7, 21];
 
-export const words: PracticeWord[] = (rawPractice as unknown as RawPracticeWord[]).map(
-  ([word, sounds, tags]) => {
+export const words: PracticeWord[] = raw.words.map(
+  ([word, sounds, tags, zipf]) => {
     const parsed = sounds.split(" ").map((token) => {
       const match = token.match(/^([a-z]+)(\d+)$/)!;
       return { label: match[1]!, digits: match[2]! };
@@ -58,6 +66,7 @@ export const words: PracticeWord[] = (rawPractice as unknown as RawPracticeWord[
       sounds: parsed,
       digits: parsed.map((sound) => sound.digits).join(""),
       tags: tags ? tags.split(",") : [],
+      zipf: zipf / 10,
     };
   },
 );
@@ -91,16 +100,28 @@ export function examplesFor(skill: string, count = 6) {
     .slice(0, count);
 }
 
-// Prompt size grows with skill: short single words, any single word, pairs, then 2-3 words.
+// Prompts grow with skill: everyday short words, longer words, pairs, then triples.
 export const LEVELS = [
-  { words: [1, 1], maxDigits: 3 },
-  { words: [1, 1], maxDigits: 5 },
-  { words: [2, 2], maxDigits: 3 },
-  { words: [2, 3], maxDigits: 4 },
+  { name: "short words", words: [1, 1], maxDigits: 3, minZipf: 4.2 },
+  { name: "longer words", words: [1, 1], maxDigits: 5, minZipf: 3.6 },
+  { name: "word pairs", words: [2, 2], maxDigits: 3, minZipf: 3.6 },
+  { name: "word triples", words: [3, 3], maxDigits: 3, minZipf: 0 },
 ];
 
+// The sounds each spelling pattern is about, so a miss is only charged to a pattern
+// when the missed sound is part of it.
+const TAG_SOUNDS: Record<string, string[]> = {
+  "soft c": ["s", "z", "sh"],
+  "soft g": ["j"],
+  x: ["k", "s", "z", "g"],
+  "ph/gh": ["f"],
+  "-ed": ["t", "d"],
+  ng: ["ng"],
+  er: ["r"],
+};
+
 export function emptyStore(): Store {
-  return { skills: {}, cards: {}, runs: [], level: 0 };
+  return { skills: {}, cards: {}, runs: [], level: 0, recent: [] };
 }
 
 export function loadStore(): Store {
@@ -154,10 +175,13 @@ export function weakness(stat: SkillStat | undefined, average: number) {
 export function weakestSkills(store: Store, count = 3) {
   const average = averageMs(store);
   return Object.entries(store.skills)
-    .filter(([, stat]) => stat.seen >= 5)
+    .filter(([, stat]) => stat.seen >= 12)
     .map(([skill, stat]) => ({ skill, stat, score: weakness(stat, average) }))
-    // Only real weak spots: missed at least 1 in 10, or a third slower than your average.
-    .filter(({ stat }) => stat.missed / stat.seen >= 0.1 || (average > 0 && stat.ms > average * 1.33))
+    // Only real weak spots: two or more misses at 1 in 10 or worse, or a third slower than average.
+    .filter(
+      ({ stat }) =>
+        (stat.missed >= 2 && stat.missed / stat.seen >= 0.1) || (average > 0 && stat.ms > average * 1.33),
+    )
     .sort((left, right) => right.score - left.score)
     .slice(0, count);
 }
@@ -182,10 +206,10 @@ function pickWeighted<T>(items: Array<[T, number]>, random: () => number) {
 // without one (a shared challenge) it depends only on the seed.
 export function makeGenerator(random: () => number, level: number, store: Store | null) {
   const shape = LEVELS[Math.min(level, LEVELS.length - 1)]!;
-  const fits = (entry: PracticeWord) => entry.digits.length <= shape.maxDigits;
+  const fits = (entry: PracticeWord) => entry.digits.length <= shape.maxDigits && entry.zipf >= shape.minZipf;
   const pool = words.filter(fits);
   const average = store ? averageMs(store) : 0;
-  const recent: string[] = [];
+  const recent: string[] = store ? store.recent : [];
 
   function nextWord(): PracticeWord {
     for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -212,9 +236,10 @@ export function makeGenerator(random: () => number, level: number, store: Store 
         candidate = pick(pool, random);
       }
 
-      if (candidate && !recent.includes(candidate.word)) {
+      const isDue = store?.cards[candidate?.word ?? ""] !== undefined;
+      if (candidate && (isDue || !recent.includes(candidate.word))) {
         recent.push(candidate.word);
-        if (recent.length > 40) {
+        if (recent.length > 300) {
           recent.shift();
         }
         return candidate;
@@ -256,18 +281,25 @@ function bump(store: Store, skill: string, update: (stat: SkillStat) => void) {
 // A correctly typed digit: how long it took, credited to its sound and word patterns.
 export function recordDigit(store: Store, word: PracticeWord, sound: Sound, ms: number) {
   const clamped = Math.min(ms, 4000);
-  for (const skill of [sound.label, ...word.tags]) {
+  const tags = word.tags.filter((tag) => TAG_SOUNDS[tag]?.includes(sound.label));
+  for (const skill of [sound.label, ...tags]) {
     bump(store, skill, (stat) => {
       stat.ms = stat.seen === 0 ? clamped : stat.ms * 0.85 + clamped * 0.15;
     });
   }
 }
 
+// A miss is charged to the sound typed wrong, and to a spelling pattern only when that
+// sound is part of it (a slip on the k of "wrinkled" isn't an -ed problem).
 export function recordWord(store: Store, word: PracticeWord, missedSound: Sound | null) {
   for (const skill of skillsOf(word)) {
     bump(store, skill, (stat) => {
       stat.seen += 1;
-      if (missedSound && (skill === missedSound.label || word.tags.includes(skill))) {
+      const charged =
+        missedSound !== null &&
+        (skill === missedSound.label ||
+          (word.tags.includes(skill) && (TAG_SOUNDS[skill]?.includes(missedSound.label) ?? false)));
+      if (charged) {
         stat.missed += 1;
       }
     });
@@ -286,11 +318,12 @@ export function recordWord(store: Store, word: PracticeWord, missedSound: Sound 
   }
 }
 
-// After a run: move up a prompt size when fast and accurate, down when struggling.
+// After a run: move up when fast and accurate (two steps when very fast), down when struggling.
 export function nextLevel(level: number, run: Run) {
   const accuracy = run.phrases ? (run.phrases - run.misses) / run.phrases : 0;
-  if (accuracy >= 0.9 && run.digits >= 30 + level * 8) {
-    return Math.min(level + 1, LEVELS.length - 1);
+  const target = 25 + level * 10;
+  if (accuracy >= 0.85 && run.digits >= target) {
+    return Math.min(level + (run.digits >= target * 2 ? 2 : 1), LEVELS.length - 1);
   }
   if (accuracy < 0.7 && run.phrases >= 4) {
     return Math.max(level - 1, 0);
@@ -298,13 +331,21 @@ export function nextLevel(level: number, run: Run) {
   return level;
 }
 
-// Shared runs travel in the URL as words: "turtle.pendulum-wolf".
+// Shared runs travel in the URL as "turtle.pendulum-wolf", base64url-encoded so the
+// link doesn't spoil the words.
 export function encodePhrases(phrases: Phrase[]) {
-  return phrases.map((phrase) => phrase.map((entry) => entry.word).join(".")).join("-");
+  const plain = phrases.map((phrase) => phrase.map((entry) => entry.word).join(".")).join("-");
+  return btoa(plain).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 export function decodePhrases(text: string): Phrase[] {
-  return text
+  let plain = "";
+  try {
+    plain = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+  } catch {
+    return [];
+  }
+  return plain
     .split("-")
     .map((part) => part.split(".").map((word) => byWord.get(word)).filter((entry): entry is PracticeWord => !!entry))
     .filter((phrase) => phrase.length > 0);

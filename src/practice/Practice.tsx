@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { SKILL_NOTES } from "../majorSystem";
 import {
+  LEVELS,
   RUN_SECONDS,
   decodePhrases,
   digitOwners,
@@ -26,7 +27,7 @@ type Phase = "ready" | "running" | "miss" | "done";
 
 type Challenge = { phrases: Phrase[]; code: string; score: number; level: number };
 
-type Result = Run & { shown: Phrase[]; leveledUp: boolean; previousBest: number };
+type Result = Run & { shown: Phrase[]; levelChange: number; hintsOff: boolean; previousBest: number };
 
 const MISS_PAUSE_MS = 1300;
 
@@ -43,7 +44,12 @@ const KEY_SOUNDS: Record<string, string> = {
   "9": "p b",
 };
 
-const LEVEL_NAMES = ["short words", "single words", "word pairs", "phrases"];
+// Digits typed this soon after a new prompt are leftovers from the last one, not answers.
+const FRESH_PROMPT_MS = 200;
+
+function levelName(level: number) {
+  return LEVELS[Math.min(level, LEVELS.length - 1)]!.name;
+}
 
 function readChallenge(): Challenge | null {
   const params = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
@@ -135,7 +141,7 @@ function WeakSpots({ store }: { store: Store }) {
           >
             {skill}
             <span className="weak-detail">
-              {Math.round((stat.missed / Math.max(stat.seen, 1)) * 100)}% missed · {(stat.ms / 1000).toFixed(1)}s each
+              {stat.missed >= 2 ? `missed ${stat.missed} of ${stat.seen}` : "slower than your average"}
             </span>
           </button>
         ))}
@@ -167,8 +173,8 @@ function History({ store }: { store: Store }) {
     <section className="practice-panel">
       <h2>Your runs</h2>
       <p className="history-line">
-        {store.runs.length} {store.runs.length === 1 ? "run" : "runs"} · best {best} digits · last{" "}
-        {recent.length} average {average.toFixed(0)} · now on {LEVEL_NAMES[store.level]}
+        {store.runs.length} {store.runs.length === 1 ? "run" : "runs"} · best {best} digits · recent average{" "}
+        {average.toFixed(0)} · now on {levelName(store.level)}
       </p>
       <div className="history-bars" aria-label="Digits per run, oldest to newest">
         {runs.map((run) => (
@@ -204,6 +210,7 @@ export function Practice() {
     phrase: null as Phrase | null,
     typed: "",
     lastKey: 0,
+    shownAt: 0,
     endAt: 0,
     queue: [] as Phrase[],
     shown: [] as Phrase[],
@@ -226,6 +233,7 @@ export function Practice() {
     state.phrase = next;
     state.typed = "";
     state.lastKey = performance.now();
+    state.shownAt = state.lastKey;
     setPhrase(next);
     setTyped("");
     setMissAt(null);
@@ -276,7 +284,13 @@ export function Practice() {
     }
     saveStore(state.store);
     setStore({ ...state.store });
-    setResult({ ...record, shown: [...state.shown], leveledUp: state.store.level > before, previousBest });
+    setResult({
+      ...record,
+      shown: [...state.shown],
+      levelChange: state.store.level - before,
+      hintsOff: before === 0 && state.store.level > 0,
+      previousBest,
+    });
     setPhrase(null);
     setRunPhase("done");
   }
@@ -299,6 +313,9 @@ export function Practice() {
     const index = state.typed.length;
     const owner = owners[index]!;
     const now = performance.now();
+    if (index === 0 && now - state.shownAt < FRESH_PROMPT_MS) {
+      return;
+    }
 
     if (digit === expected[index]) {
       // The first digit of a prompt includes reading time, so it isn't timed.
@@ -417,7 +434,7 @@ export function Practice() {
           {seconds}s
         </span>
         <span className="score" data-testid="score">
-          {active ? `${run.current.digits} digits` : challenge ? `challenge: beat ${challenge.score}` : LEVEL_NAMES[store.level]}
+          {active ? `${run.current.digits} digits` : challenge ? `challenge: beat ${challenge.score}` : levelName(store.level)}
         </span>
         {active ? (
           <button className="stop" type="button" onClick={abort}>
@@ -470,7 +487,11 @@ export function Practice() {
                 : result.digits > result.previousBest && result.previousBest > 0
                   ? " · new best"
                   : ""}
-              {result.leveledUp ? ` · next up: ${LEVEL_NAMES[store.level]}` : ""}
+              {result.levelChange > 0
+                ? ` · moving up to ${levelName(store.level)}${result.hintsOff ? " (keypad hints off)" : ""}`
+                : result.levelChange < 0
+                  ? ` · back to ${levelName(store.level)}`
+                  : ""}
             </p>
             <p className="result-actions">
               <button className="again" type="button" onClick={start}>
@@ -485,15 +506,14 @@ export function Practice() {
       </div>
 
       <p className="typed" data-testid="typed" aria-label="Typed digits">
-        {active && phrase
-          ? expected.split("").map((digit, index) => (
+        {/* Only what you've typed: placeholders would give away the answer's length. */}
+        {active && phrase && (typed || phase === "miss")
+          ? (phase === "miss" ? expected : typed).split("").map((digit, index) => (
               <span
-                className={
-                  index < typed.length ? "slot done" : phase === "miss" && index === missAt ? "slot wrong" : "slot"
-                }
+                className={index < typed.length ? "slot done" : phase === "miss" && index === missAt ? "slot wrong" : "slot"}
                 key={index}
               >
-                {index < typed.length || phase === "miss" ? digit : "·"}
+                {digit}
               </span>
             ))
           : " "}

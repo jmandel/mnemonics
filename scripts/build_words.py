@@ -8,8 +8,9 @@ familiarity tier, display casing (names and acronyms), and same-sound spellings 
 Output: {digits: [[shown, tier, concrete, "other/spellings"?], ...]}, tier 0 = common,
 1 = familiar, 2 = obscure; concrete = 1 for easy-to-picture words.
 
-Also writes practice.json for the practice page: [[word, "f8 i sh6 ng27"-style sounds,
-"tag,tag"], ...] for common, picturable words.
+Also writes practice.json: {"words": [[word, "f8 sh6 ng27", "tag,tag", zipf*10], ...],
+"examples": {digits: word}} with practice prompts (common, picturable base forms whose
+answer follows from the rules) and the About page's example word for 0-99.
 
 Run from the repo root:  uv run --locked scripts/build_words.py
 Every input is downloaded from a pinned URL into data/sources/ (git-ignored) and
@@ -60,6 +61,11 @@ DOWNLOADS = {
         "https://raw.githubusercontent.com/wooorm/dictionaries/8cfea406b505e4d7df52d5a19bce525df98c54ab/dictionaries/en/index.dic",
         "f0b1a234bd178bdd01875b2a392a9647f888b8fe879f79c52aae62c2759b3647",
     ),
+    # Used only to keep practice prompts and About examples clean; lists keep these words.
+    "ldnoobw.txt": (
+        "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/en",
+        "af851ecef1d5f212caba17339b12ac39cc2fef7d78c74876f67237644fcee8bd",
+    ),
     "first-names.txt": (
         "https://raw.githubusercontent.com/dominictarr/random-name/468ae50d63f1d1ecb417d1b119748df9191431e7/first-names.txt",
         "17d20fdf5281781bf2f2f73119e39d040f5a6da40ffa93d2cab06027df5fb37d",
@@ -89,6 +95,31 @@ SLURS = {
     "chink", "chinks", "coon", "coons", "dyke", "dykes", "fag", "fags", "faggot", "faggots",
     "gook", "gooks", "kike", "kikes", "nigga", "niggas", "nigger", "niggers", "raghead",
     "retard", "retards", "spic", "spics", "tranny", "trannies", "wetback", "wetbacks",
+    "midget", "midgets", "negro", "negroes",
+}
+
+# Also kept out of practice prompts and examples (beyond ldnoobw.txt): violent, sexual
+# or bodily words that make a poor surprise in a quiz.
+PRACTICE_AVOID = {
+    "rapist", "rape", "lynching", "hooker", "hookers", "cleavage", "lingerie", "diarrhea",
+    "laxative", "anus", "sex", "sexy", "nude", "naked", "penis", "vagina", "nipple", "condom",
+    "semen", "sperm", "pubic", "testicle", "testicles", "scrotum", "urine", "feces", "vomit",
+    "corpse", "suicide", "heroin", "cocaine", "brothel", "pimp", "bong",
+}
+
+# CMUdict pronunciations that are simply wrong for the Major System; these words are
+# dropped everywhere rather than filed under the wrong number.
+MISPRONOUNCED = {
+    "jalapeno", "jalapenos",  # the j is an h sound: 592, not 6592
+    "hygienist", "hygienists",  # soft g: 6201, not 7201
+    "backstreet",  # the r is missing
+}
+
+# Number words make confusing examples ("five" for 88).
+NUMBER_WORDS = {
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty",
+    "ninety", "hundred", "thousand", "million",
 }
 
 PHONEME_DIGITS = {
@@ -236,6 +267,34 @@ def spelled_digits(word):
     return "".join(LETTER_DIGITS.get(ch, "") for ch in w)
 
 
+# Spellings that can sound two ways; a practice word passes if any reading matches.
+AMBIGUOUS_SPELLINGS = [("G", ("7", "6")), ("C", ("6", "7")), ("H", ("", "8", "7"))]
+
+
+def spelled_readings(word):
+    """Every digit string the spelling allows under the taught rules (soft or hard g,
+    ch as in chin or chorus, gh silent, f or g). Used to keep practice words whose
+    answer follows from their spelling."""
+    w = re.sub("[^a-z]", "", word)
+    for pattern, replacement in SILENT_SPELLINGS:
+        if pattern != r"gh(t|$)":
+            w = re.sub(pattern, replacement, w)
+    w = re.sub(r"cc(?=[eiy])", "ks", w)
+    w = re.sub(r"([b-df-hj-np-tv-z])\1", r"\1", w)
+    w = w.replace("tch", "ch").replace("ph", "f").replace("ck", "k").replace("qu", "k").replace("x", "ks")
+    w = w.replace("ch", "C").replace("gh", "H")
+    w = re.sub(r"g(?=[eiy])", "G", w)
+    w = re.sub(r"c(?=[eiy])", "s", w).replace("c", "k")
+    w = w.replace("th", "t").replace("sh", "j")
+    readings = {""}
+    for ch in w:
+        options = dict(AMBIGUOUS_SPELLINGS).get(ch, (LETTER_DIGITS.get(ch, ""),))
+        readings = {prefix + option for prefix in readings for option in options}
+        if len(readings) > 64:
+            break
+    return readings
+
+
 def edit_distance(a, b):
     row = list(range(len(b) + 1))
     for i, ca in enumerate(a, 1):
@@ -273,7 +332,7 @@ def keep_spelling(word, zipf, dictionary, prevalence, cased):
     # Letter names, abbreviations, possessives ("paris'", "jones's"), elisions ("'gain").
     if len(word) < 2 or "." in word or word.startswith("'") or not re.search("[a-z]", word):
         return False
-    if word.endswith("'s") or word.endswith("s'") or word in SLURS:
+    if word.endswith("'s") or word.endswith("s'") or word in SLURS or word in MISPRONOUNCED:
         return False
     # "st-louis", "l'oreal", "d'souza".
     if re.match(r"(st-|l'|d')", word):
@@ -339,11 +398,32 @@ def spelling_tags(word, phones):
     return tags
 
 
-def is_practice_word(word, tier, is_name, concrete, digits):
-    # Common, picturable, plain-letter words with a short answer.
+def is_base_form(word):
+    # "jog", not "jogging" (even though "jogging" is also a noun); "mouse", not "mice".
+    lemmas_by_pos = getAllLemmas(word)
+    forms = {form for forms in lemmas_by_pos.values() for form in forms}
+    if forms and word not in forms:
+        return False
+    other = forms - {word}
+    return not (other and re.search("(ing|ed|s)$", word))
+
+
+def is_clean(word, avoid):
+    return word not in avoid and not any(part in avoid for part in re.split("[^a-z]", word))
+
+
+def is_practice_word(word, tier, is_name, concrete, digits, phones, avoid):
+    """Common, picturable base-form words whose answer follows from the taught rules."""
+    consonants = [phone for phone in phones if phone in SOUND_LABELS]
     return (
         tier == 0 and not is_name and concrete and re.fullmatch("[a-z]{3,}", word) is not None
         and 1 <= len(digits) <= 5
+        and is_base_form(word)
+        and is_clean(word, avoid)
+        # Spelling and pronunciation agree (not "jalapeno" = 592 or "hygienist").
+        and digits in spelled_readings(word)
+        # No doubled sounds across a compound ("bookkeeper"), which people count differently.
+        and all(left != right for left, right in zip(consonants, consonants[1:]))
     )
 
 
@@ -354,6 +434,7 @@ def main():
     dictionary = set((SOURCES / "enable1.txt").read_text().split())
     cased = load_cased_words()
     first_names = {line.strip().lower() for line in (SOURCES / "first-names.txt").read_text().splitlines()}
+    avoid = PRACTICE_AVOID | {line.strip().lower() for line in (SOURCES / "ldnoobw.txt").read_text().splitlines()}
 
     # word -> pronunciations in CMUdict order; the first is the standard one.
     pronunciations = defaultdict(list)
@@ -376,6 +457,7 @@ def main():
 
     out = {}
     practice = []
+    examples = defaultdict(list)
     for digits in sorted(buckets):
         entries = []
         seen = set()
@@ -401,8 +483,17 @@ def main():
             if not ranked:
                 continue
             tier, neg_score, word, shown, is_name, concrete = ranked[0]
-            if is_practice_word(word, tier, is_name, concrete, digits):
-                practice.append([word, sounds_for(chosen[word]), ",".join(spelling_tags(word, chosen[word]))])
+            zipf = zipf_frequency(word, "en")
+            if is_practice_word(word, tier, is_name, concrete, digits, chosen[word], avoid):
+                practice.append(
+                    [word, sounds_for(chosen[word]), ",".join(spelling_tags(word, chosen[word])), round(zipf * 10)]
+                )
+            # About page example for short numbers: the most picturable everyday word.
+            # Familiar words only count when no common one fits (88: "fife", not "five").
+            if len(digits) <= 2 and tier <= 1 and not is_name and is_base_form(word) and is_clean(word, avoid):
+                if word not in NUMBER_WORDS and re.fullmatch("[a-z]+", word):
+                    rating = concreteness.get(word, 0)
+                    examples[digits].append((-(rating + 0.5 * zipf) + 10 * tier, word))
             # Mention other common real-word spellings (meat/meet, nose/knows).
             others = [entry[3] for entry in ranked[1:] if entry[0] == 0 and not entry[4]]
             seen.update(entry[2] for entry in ranked)
@@ -419,7 +510,8 @@ def main():
     total = sum(len(v) for v in out.values())
     print(f"{len(out)} digit keys, {total} words -> {OUT.name} ({OUT.stat().st_size // 1024} KB)", file=sys.stderr)
     practice.sort()
-    PRACTICE_OUT.write_text(json.dumps(practice, separators=(",", ":")))
+    best_examples = {digits: min(options)[1] for digits, options in sorted(examples.items())}
+    PRACTICE_OUT.write_text(json.dumps({"words": practice, "examples": best_examples}, separators=(",", ":")))
     print(f"{len(practice)} practice words -> {PRACTICE_OUT.name} ({PRACTICE_OUT.stat().st_size // 1024} KB)", file=sys.stderr)
 
 

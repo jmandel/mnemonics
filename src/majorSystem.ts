@@ -7,20 +7,21 @@ export const DIGITS: Array<{ digit: string; sounds: string; spelled: string; hoo
   { digit: "3", sounds: "m", spelled: "m", hook: "m has three downstrokes" },
   { digit: "4", sounds: "r", spelled: "r", hook: "four ends in r" },
   { digit: "5", sounds: "l", spelled: "l", hook: "L is 50 in Roman numerals" },
-  { digit: "6", sounds: "j sh ch zh", spelled: "j, sh, ch, soft g (gem)", hook: "a mirrored J looks like 6" },
-  { digit: "7", sounds: "k g", spelled: "k, hard c, hard g, q, ck", hook: "K is two 7s back to back" },
-  { digit: "8", sounds: "f v", spelled: "f, v, ph, gh (laugh)", hook: "a cursive f has two loops, like 8" },
+  { digit: "6", sounds: "j sh ch zh", spelled: "j, sh, ch (chin), soft g (gem), zh (vision)", hook: "a mirrored J looks like 6" },
+  { digit: "7", sounds: "k g", spelled: "k, hard c, hard g, q, ck, ch (chorus)", hook: "K is two 7s back to back" },
+  { digit: "8", sounds: "f v", spelled: "f, v, ph, gh when it sounds like f (laugh)", hook: "a cursive f has two loops, like 8" },
   { digit: "9", sounds: "p b", spelled: "p, b", hook: "p is a mirrored 9" },
 ];
 
 export const RULES: Array<[string, string]> = [
   ["Sounds, not letters", "Only what you hear counts: phone = 82, knee = 2."],
   ["Vowels are free", "So are w, h and y. Use them to make any word you like."],
-  ["Double letters are one sound", "butter = 914, not 9114."],
+  ["Count sounds, not doubled letters", "butter = 914 (one t sound); accent = 7021 (cc is k + s)."],
   ["Silent letters don't count", "lamb = 53, knight = 21, walk = 7."],
   ["x is k + s", "box = 970, tax = 170."],
-  ["ng is n + g = 27", "sing = 027. Before k or g it's just n: bank = 927, finger = 8274."],
+  ["The ng sound (sing) is 27", "sing = 027, fishing = 8627. Before k or g it's just n: bank = 927, finger = 8274. In engine, n and g are separate sounds: 262."],
   ["-ed is t or d", "jumped = 6391, played = 951."],
+  ["Use the standard American pronunciation", "The word list follows the CMU Pronouncing Dictionary."],
   ["r after a vowel counts", "car = 74, bird = 941."],
 ];
 

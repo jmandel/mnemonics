@@ -2,16 +2,27 @@ import { useState } from "react";
 
 import { digitsOfWord, exampleWord } from "./engine";
 import { DIGITS, RULES } from "./majorSystem";
+import { examples } from "./practice/model";
+
+function example(digits: string) {
+  return examples[digits] ?? exampleWord(digits);
+}
+
+// Digits for a word or a phrase ("queen bear" = 72 94), or null if any word is unknown.
+function phraseDigits(text: string) {
+  const parts = text.trim().split(/\s+/).map((part) => digitsOfWord(part));
+  return parts.every((part) => part !== null) ? parts.join(" ") : null;
+}
 
 function TryWord() {
   const [word, setWord] = useState("");
-  const digits = word.trim() ? digitsOfWord(word) : null;
+  const digits = word.trim() ? phraseDigits(word) : null;
   return (
     <p className="try-word">
       <input
         aria-label="Try a word"
         autoComplete="off"
-        placeholder="Try a word"
+        placeholder="Try a word or phrase"
         spellCheck={false}
         value={word}
         onChange={(event) => setWord(event.target.value)}
@@ -50,7 +61,7 @@ export function About() {
               <td className="code-digit">{row.digit}</td>
               <td>{row.spelled}</td>
               <td className="hook-col">{row.hook}</td>
-              <td>{exampleWord(row.digit)}</td>
+              <td>{example(row.digit)}</td>
             </tr>
           ))}
         </tbody>
@@ -72,7 +83,7 @@ export function About() {
         {grid.map((digits) => (
           <a className="peg" href={`?n=${digits}#`} key={digits}>
             <span className="peg-digits">{digits}</span>
-            <span className="peg-word">{exampleWord(digits) ?? "–"}</span>
+            <span className="peg-word">{example(digits) ?? "–"}</span>
           </a>
         ))}
       </div>

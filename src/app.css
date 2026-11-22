@@ -706,7 +706,7 @@ h1 {
 /* ---------- About ---------- */
 
 .about {
-  max-width: 44rem;
+  max-width: 56rem;
   padding-top: 0.6rem;
 }
 
@@ -800,16 +800,23 @@ h1 {
   color: var(--muted);
 }
 
+/* Ten columns keep each tens row together; five on narrow screens (two rows per ten). */
 .peg-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.2rem, 1fr));
-  gap: 0.25rem;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+@media (max-width: 44rem) {
+  .peg-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 .peg {
   display: flex;
-  gap: 0.35rem;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 0;
   padding: 0.2rem 0.3rem;
   border-radius: 4px;
   text-decoration: none;
