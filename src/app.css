@@ -6,7 +6,8 @@
   --muted: light-dark(#6f6b63, #9a968f);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 15px;
+  /* Relative, so the browser's and phone's text-size settings still apply. */
+  font-size: 93.75%;
   line-height: 1.35;
   color: var(--ink);
   background: var(--bg);
@@ -49,7 +50,7 @@ h1 {
 .num-input {
   width: 100%;
   box-sizing: border-box;
-  font: 600 1.6rem/1.2 var(--mono);
+  font: 600 min(1.6rem, 6.4vw)/1.2 var(--mono);
   letter-spacing: 0.06em;
   color: inherit;
   background: transparent;
@@ -67,9 +68,13 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.15rem 0.9rem;
-  margin: 0.45rem 0 0;
+  margin: 0.5rem 0 0;
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+.key-note {
+  font-family: var(--mono);
 }
 
 .key b {
@@ -250,6 +255,16 @@ h1 {
 
 .word.chosen {
   font-weight: 650;
+  cursor: default;
+}
+
+.unpin {
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 0 0.3rem;
+  cursor: pointer;
 }
 
 /* A chunk already listed higher up: one line marked ↑, opens on click. Lightness
@@ -304,12 +319,18 @@ h1 {
   }
 
   .more-words,
-  .hint {
-    padding: 0.35rem 0;
+  .hint,
+  .unpin {
+    padding: 0.35rem 0.3rem;
+  }
+
+  /* Taller word targets on touch screens. */
+  .word {
+    padding: 0.3rem 0.15rem;
   }
 
   .tier-line {
-    row-gap: 0.25rem;
+    row-gap: 0;
   }
 
   .key {

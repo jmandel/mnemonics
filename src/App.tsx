@@ -46,6 +46,16 @@ function initialLevelFromUrl(): Level {
   return LEVELS.find((entry) => entry.param === param)?.level ?? 0;
 }
 
+// Kept words live in the URL as k=start-end-word,... so a phrase survives reload and sharing.
+function initialPinsFromUrl(): Pin[] {
+  const param = new URLSearchParams(window.location.search).get("k") ?? "";
+  return param
+    .split(",")
+    .map((part) => part.match(/^(\d+)-(\d+)-(.+)$/))
+    .filter((match): match is RegExpMatchArray => match !== null)
+    .map(([, start, end, word]) => ({ start: Number(start), end: Number(end), word: word! }));
+}
+
 function spanKey(start: number, end: number) {
   return `${start}:${end}`;
 }
@@ -84,8 +94,9 @@ function ChunkRow(props: ChunkRowProps) {
         <span className="chunk-digits">{chunk}</span>
         <div className="words">
           <p className="tier-line">
-            <button className="word chosen" type="button" title="Choose again" onClick={props.onUnpin}>
-              {pin.word}
+            <span className="word chosen">{pin.word}</span>
+            <button className="unpin" type="button" aria-label={`Remove ${pin.word}`} onClick={props.onUnpin}>
+              ×
             </button>
           </p>
         </div>
@@ -159,7 +170,7 @@ function toggled(set: Set<string>, key: string, on: boolean) {
 export function App() {
   const [input, setInput] = useState(initialDigitsFromUrl);
   const [level, setLevel] = useState<Level>(initialLevelFromUrl);
-  const [pins, setPins] = useState<Pin[]>([]);
+  const [pins, setPins] = useState<Pin[]>(initialPinsFromUrl);
   const [shown, setShown] = useState(PAGE_SIZE);
   // Chunk positions whose repeated one-line summary was opened, and digit strings
   // whose rarer words are showing. Both apply to every copy on the page.
@@ -173,15 +184,10 @@ export function App() {
   const shorterAt = useMemo(() => {
     const best = breakdowns[0]?.chunks.length ?? Infinity;
 
-    for (const next of LEVELS.filter((entry) => entry.level > level)) {
-      const count = fewestChunks(digits, next.level, pins);
-
-      if (count !== null && count < best) {
-        return { ...next, count };
-      }
-    }
-
-    return null;
+    // Only the next level: jumping to "all" mostly offers obscure surnames.
+    const next = LEVELS[level + 1];
+    const count = next ? fewestChunks(digits, next.level, pins) : null;
+    return next && count !== null && count < best ? { ...next, count } : null;
   }, [breakdowns, digits, level, pins]);
 
   useEffect(() => {
@@ -199,14 +205,21 @@ export function App() {
       url.searchParams.set("words", LEVELS[level]!.param);
     }
 
-    history.replaceState({}, "", url);
-  }, [input, level]);
+    if (pins.length > 0) {
+      url.searchParams.set("k", pins.map((pin) => `${pin.start}-${pin.end}-${pin.word}`).join(","));
+    } else {
+      url.searchParams.delete("k");
+    }
 
-  useEffect(() => {
+    history.replaceState({}, "", url);
+  }, [input, level, pins]);
+
+  function changeDigits(next: string) {
+    setInput(next);
     setPins([]);
     setOpened(new Set());
     setRarer(new Set());
-  }, [digits]);
+  }
 
   useEffect(() => setShown(PAGE_SIZE), [digits, level, pins]);
 
@@ -226,7 +239,7 @@ export function App() {
         <div className="title-row">
           <h1>Major System</h1>
           <div className="levels" role="radiogroup" aria-label="Words to use">
-            <span className="levels-label">words</span>
+            <span className="levels-label">words:</span>
             {LEVELS.map((entry) => (
               <button
                 aria-checked={level === entry.level}
@@ -251,18 +264,8 @@ export function App() {
           autoComplete="off"
           placeholder="Enter a number"
           value={input}
-          onChange={(event) => setInput(sanitizeDigits(event.target.value))}
+          onChange={(event) => changeDigits(sanitizeDigits(event.target.value))}
         />
-        <p className="key" aria-label="Digit sounds">
-          {SOUND_KEY.map(([digit, sounds]) => (
-            <span key={digit}>
-              <b>{digit}</b> {sounds}
-            </span>
-          ))}
-          <span>
-            <b>27</b> ng
-          </span>
-        </p>
         {sortedPins.length > 0 ? (
           <div className="phrase" data-testid="phrase">
             {sortedPins.map((pin) => (
@@ -288,18 +291,27 @@ export function App() {
         ) : null}
       </header>
 
+      <p className="key" aria-label="Digit sounds">
+        {SOUND_KEY.map(([digit, sounds]) => (
+          <span key={digit}>
+            <b>{digit}</b> {sounds}
+          </span>
+        ))}
+        <span className="key-note">ng = 27</span>
+      </p>
+
       {digits ? (
         <p className="summary" data-testid="summary">
           {breakdowns.length === 0
             ? level < 2
               ? `No split uses only ${LEVELS[level]!.label} words.`
               : "No way to split these digits into words."
-            : `${breakdowns.length}${breakdowns.length >= 500 ? "+" : ""} ways to split · fewest chunks first · tap a word to keep it`}
+            : `${breakdowns.length}${breakdowns.length >= 500 ? "+" : ""} ${breakdowns.length === 1 ? "way" : "ways"} to split · fewest chunks first · tap a word to keep it`}
           {shorterAt ? (
             <>
               {" · "}
               <button className="hint" type="button" onClick={() => setLevel(shorterAt.level)}>
-                {shorterAt.label} words fit in {shorterAt.count} {shorterAt.count === 1 ? "chunk" : "chunks"}
+                use {shorterAt.label} words for {shorterAt.count} {shorterAt.count === 1 ? "chunk" : "chunks"}
               </button>
             </>
           ) : null}
@@ -312,11 +324,11 @@ export function App() {
           </p>
           <p>
             Try{" "}
-            <button className="hint" type="button" onClick={() => setInput("7294")}>
+            <button className="hint" type="button" onClick={() => changeDigits("7294")}>
               7294
             </button>{" "}
             or{" "}
-            <button className="hint" type="button" onClick={() => setInput("3141592653")}>
+            <button className="hint" type="button" onClick={() => changeDigits("3141592653")}>
               3141592653
             </button>
             .
