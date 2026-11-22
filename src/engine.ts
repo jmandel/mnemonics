@@ -1,7 +1,6 @@
 import rawWords from "../words.json";
 
-// Built by scripts/build_words.py: digits -> [word, tier, isName, otherSpellings?],
-// best first. Tier 0 = common, 1 = familiar, 2 = obscure.
+// Built by scripts/build_words.py: digits -> [word, tier, isName, otherSpellings?]. Tier 0 = common, 1 = familiar, 2 = obscure.
 type RawEntry = [string, number, number] | [string, number, number, string];
 
 export type Level = 0 | 1 | 2;
@@ -27,12 +26,15 @@ function getDictionary() {
     dictionary = new Map(
       Object.entries(rawWords as unknown as Record<string, RawEntry[]>).map(([digits, entries]) => [
         digits,
-        entries.map(([word, tier, isName, alternates]) => ({
-          word,
-          tier: tier as Level,
-          isName: isName === 1,
-          alternates: alternates ? alternates.split("/") : [],
-        })),
+        entries
+          .map(([word, tier, isName, alternates]) => ({
+            word,
+            tier: tier as Level,
+            isName: isName === 1,
+            alternates: alternates ? alternates.split("/") : [],
+          }))
+          // Alphabetical within each tier so long lists are easy to scan.
+          .sort((left, right) => left.tier - right.tier || left.word.localeCompare(right.word)),
       ]),
     );
   }
@@ -40,7 +42,7 @@ function getDictionary() {
   return dictionary;
 }
 
-// All words for a chunk, best first.
+// All words for a chunk: common first, alphabetical within each tier.
 export function wordsFor(digits: string) {
   return getDictionary().get(digits) ?? [];
 }

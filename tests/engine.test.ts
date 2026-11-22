@@ -37,9 +37,12 @@ test("75842 is california, a common name", () => {
   expect(california?.tier).toBe(0);
 });
 
-test("words are sorted by tier and same-sound spellings are merged", () => {
+test("words are alphabetical within tiers and same-sound spellings are merged", () => {
   const words = wordsFor("92");
-  expect(words.map((entry) => entry.tier)).toEqual([...words.map((entry) => entry.tier)].sort());
+  const sorted = [...words].sort(
+    (left, right) => left.tier - right.tier || left.word.localeCompare(right.word),
+  );
+  expect(words).toEqual(sorted);
   expect(words.map((entry) => entry.word)).not.toContain("pane");
 });
 

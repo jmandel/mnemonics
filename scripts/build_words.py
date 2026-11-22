@@ -130,8 +130,8 @@ def main():
             for word in spellings:
                 zipf = zipf_frequency(word, "en")
                 tier, is_name, score = classify(word, zipf, prevalence, concreteness, dictionary)
-                # Drop names nobody uses, and two-letter non-words.
-                if is_name and (zipf == 0 or len(word) < 3):
+                # Drop names nobody uses, and two-letter fragments ("sh", "li", "hm").
+                if (is_name and zipf == 0) or (len(word) < 3 and word not in prevalence):
                     continue
                 ranked.append((tier, -score, word, is_name))
             ranked.sort()

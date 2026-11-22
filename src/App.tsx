@@ -3,7 +3,6 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { countAtLevel, findBreakdowns, wordsFor, type Level, type Word } from "./engine";
 
 const PAGE_SIZE = 25;
-const WORDS_PREVIEW = 24;
 
 const LEVELS: Array<{ level: Level; label: string; param: string }> = [
   { level: 0, label: "common", param: "common" },
@@ -57,7 +56,7 @@ function ChunkRow({ chunk, level }: { chunk: string; level: Level }) {
   const [open, setOpen] = useState(false);
   const words = wordsFor(chunk);
   const atLevel = countAtLevel(words, level);
-  const visible = open ? words : words.slice(0, Math.min(atLevel, WORDS_PREVIEW));
+  const visible = open ? words : words.slice(0, atLevel);
   const hidden = words.length - visible.length;
 
   return (
@@ -72,7 +71,7 @@ function ChunkRow({ chunk, level }: { chunk: string; level: Level }) {
             +{hidden}
           </button>
         ) : null}
-        {open && visible.length > Math.min(atLevel, WORDS_PREVIEW) ? (
+        {open && words.length > atLevel ? (
           <button className="more-words" type="button" onClick={() => setOpen(false)}>
             less
           </button>
