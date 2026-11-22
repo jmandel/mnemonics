@@ -1,6 +1,6 @@
 # Mnemonics
 
-A small Bun + React page for the Mnemonic Major System. Type a number and it lists every way to split the digits into chunks that have words (fewest chunks first), with all the words for each chunk, most common first.
+A small Bun + React page for the Mnemonic Major System. Type a number and it lists every way to split the digits into chunks that have words (fewest chunks first), with all the words for each chunk, alphabetical within each familiarity tier. Tap a word to keep it: the list narrows to splits that use it, and the chosen words build up as a phrase you can copy. A chunk already listed higher up collapses to one line marked ↑.
 
 ## Repo Layout
 
@@ -23,12 +23,14 @@ A small Bun + React page for the Mnemonic Major System. Type a number and it lis
 bun run prepare:data   # = uv run scripts/build_words.py
 ```
 
-Each CMUdict pronunciation is turned into Major System digits. For every word the build then decides:
+Each CMUdict pronunciation is turned into Major System digits. NG follows the spelling: 27 in "sing", 2 before k/g as in "bank" (927). A word's alternate pronunciations are only used when they keep every consonant, so casual forms like "twenny" don't file "twenty" under 12. For every word the build then decides:
 
 - **Familiarity tier** (common / familiar / obscure), shown by the `common · familiar · all` control. It uses word prevalence (the share of people who know a word), falling back to frequency. Inflected forms inherit their base word's prevalence, so "metered" counts as well known because "meter" is.
-- **Name or word.** A word is a name if neither it nor its base form is in the ENABLE word list or the prevalence norms. Names are shown capitalized; rare names with no measurable frequency are dropped.
+- **Name, acronym or word**, from the capitalization in Hunspell's en_US list (India, FBI, email), falling back to the ENABLE list and prevalence norms. Names are capitalized, acronyms uppercase; names with no measurable frequency are dropped.
+- **Easy to picture** (concreteness 4+), used to rank splits with the same number of chunks.
+- **Filtering.** Slurs are dropped; other vulgar words (LDNOOBW list) are demoted to rare. Possessives, abbreviations, letter names, two-letter fragments and hyphenated phrases that no word list has ("how-many") are skipped.
 - **Order within a chunk:** tier, then frequency, nudged toward words people know and words that are easy to picture (concreteness).
-- **Same-sound merging.** Spellings with an identical pronunciation in the same chunk (meat/meet, tail/tale) become one entry; other well-known spellings are shown after a slash.
+- **Same-sound merging.** Spellings with the same standard pronunciation (meat/meet, nose/knows) become one entry; other common spellings are shown after a slash.
 
 Letter names, abbreviations and possessives are skipped.
 
@@ -39,6 +41,8 @@ Sources, downloaded into `data/sources/` on first run:
 - Word prevalence norms: Brysbaert, Mandera, McCormick & Keuleers (2019), "Word prevalence norms for 62,000 English lemmas", *Behavior Research Methods* 51, 467–479.
 - Concreteness ratings: Brysbaert, Warriner & Kuperman (2014), "Concreteness ratings for 40 thousand generally known English word lemmas", *Behavior Research Methods* 46, 904–911.
 - [ENABLE](https://github.com/dolph/dictionary) word list (public domain).
+- [Hunspell en_US](https://github.com/wooorm/dictionaries) from SCOWL (MIT/BSD-style).
+- [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) (CC BY 4.0).
 - [LemmInflect](https://github.com/bjascob/LemmInflect) for base forms.
 
 ## App

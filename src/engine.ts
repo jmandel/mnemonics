@@ -1,6 +1,7 @@
 import rawWords from "../words.json";
 
-// Built by scripts/build_words.py: digits -> [word, tier, isName, otherSpellings?]. Tier 0 = common, 1 = familiar, 2 = obscure.
+// Built by scripts/build_words.py: digits -> [word, tier, concrete, otherSpellings?].
+// Tier 0 = common, 1 = familiar, 2 = obscure; concrete = 1 for easy-to-picture words.
 type RawEntry = [string, number, number] | [string, number, number, string];
 
 export type Level = 0 | 1 | 2;
@@ -8,13 +9,20 @@ export type Level = 0 | 1 | 2;
 export type Word = {
   word: string;
   tier: Level;
-  isName: boolean;
+  concrete: boolean;
   alternates: string[];
 };
 
 export type Breakdown = {
   key: string;
   chunks: string[];
+};
+
+// A word the user chose for the digits from start (inclusive) to end (exclusive).
+export type Pin = {
+  start: number;
+  end: number;
+  word: string;
 };
 
 const MAX_BREAKDOWNS = 500;
@@ -27,10 +35,10 @@ function getDictionary() {
       Object.entries(rawWords as unknown as Record<string, RawEntry[]>).map(([digits, entries]) => [
         digits,
         entries
-          .map(([word, tier, isName, alternates]) => ({
+          .map(([word, tier, concrete, alternates]) => ({
             word,
             tier: tier as Level,
-            isName: isName === 1,
+            concrete: concrete === 1,
             alternates: alternates ? alternates.split("/") : [],
           }))
           // Alphabetical within each tier so long lists are easy to scan.
@@ -58,25 +66,48 @@ export function countAtLevel(words: Word[], level: Level) {
   return count;
 }
 
-// Higher is better: an easy best word, then more choices.
+// Higher is better: an easy best word, something easy to picture, then more choices.
 function chunkScore(chunk: string, level: Level) {
   const words = wordsFor(chunk);
-  return (2 - (words[0]?.tier ?? 2)) * 2 + Math.log2(countAtLevel(words, level) + 1) * 0.5;
+  const usable = words.slice(0, countAtLevel(words, level));
+  return (
+    (2 - (words[0]?.tier ?? 2)) * 2 +
+    (usable.some((entry) => entry.concrete) ? 1.5 : 0) +
+    Math.log2(usable.length + 1) * 0.5
+  );
 }
 
 // Every way to cut the digits into chunks that each have a word at the given level,
-// fewest chunks first, then by how good each chunk's words are.
-export function findBreakdowns(digits: string, level: Level = 2, limit = MAX_BREAKDOWNS) {
+// fewest chunks first, then by how good each chunk's words are. Pinned chunks are
+// kept exactly; other chunks may not cross them.
+export function findBreakdowns(
+  digits: string,
+  level: Level = 2,
+  pins: Pin[] = [],
+  limit = MAX_BREAKDOWNS,
+) {
   const n = digits.length;
-  const usable = (chunk: string) => countAtLevel(wordsFor(chunk), level) > 0;
+  const allowed = (start: number, end: number) => {
+    let pinned = false;
 
-  // canFinish[i]: digits[i..] can be fully split into usable chunks.
+    for (const pin of pins) {
+      if (pin.start === start && pin.end === end) {
+        pinned = true;
+      } else if (start < pin.end && end > pin.start) {
+        return false;
+      }
+    }
+
+    return pinned || countAtLevel(wordsFor(digits.slice(start, end)), level) > 0;
+  };
+
+  // canFinish[i]: digits[i..] can be fully split into allowed chunks.
   const canFinish = new Array<boolean>(n + 1).fill(false);
   canFinish[n] = true;
 
   for (let start = n - 1; start >= 0; start -= 1) {
     for (let end = start + 1; end <= n; end += 1) {
-      if (canFinish[end] && usable(digits.slice(start, end))) {
+      if (canFinish[end] && allowed(start, end)) {
         canFinish[start] = true;
         break;
       }
@@ -113,10 +144,8 @@ export function findBreakdowns(digits: string, level: Level = 2, limit = MAX_BRE
       }
 
       for (let end = start + 1; end <= n; end += 1) {
-        const chunk = digits.slice(start, end);
-
-        if (canFinish[end] && usable(chunk)) {
-          chunks.push(chunk);
+        if (canFinish[end] && allowed(start, end)) {
+          chunks.push(digits.slice(start, end));
           walk(end);
           chunks.pop();
         }
@@ -129,4 +158,9 @@ export function findBreakdowns(digits: string, level: Level = 2, limit = MAX_BRE
   }
 
   return results;
+}
+
+// Fewest chunks possible at a level, or null if the digits can't be split at all.
+export function fewestChunks(digits: string, level: Level, pins: Pin[] = []) {
+  return findBreakdowns(digits, level, pins, 1)[0]?.chunks.length ?? null;
 }

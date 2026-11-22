@@ -29,12 +29,40 @@ test("breakdowns are ordered by chunk count", () => {
   expect(counts).toEqual([...counts].sort((left, right) => left - right));
 });
 
-test("75842 is california, a common name", () => {
+test("75842 is California, a common name shown capitalized", () => {
   expect(findBreakdowns("975842", 0).map((breakdown) => breakdown.key)).toContain("9|75842");
-  const california = wordsFor("75842")[0];
-  expect(california?.word).toBe("california");
-  expect(california?.isName).toBe(true);
+  const california = wordsFor("75842").find((entry) => entry.word === "California");
   expect(california?.tier).toBe(0);
+});
+
+const filedUnder = (word: string, digits: string) => wordsFor(digits).some((entry) => entry.word === word);
+
+test("casual pronunciations that drop a consonant don't file words under the wrong digits", () => {
+  expect(filedUnder("twenty", "121")).toBe(true);
+  expect(filedUnder("twenty", "12")).toBe(false);
+  expect(filedUnder("last", "501")).toBe(true);
+  expect(filedUnder("last", "50")).toBe(false);
+  expect(filedUnder("county", "72")).toBe(false);
+});
+
+test("ng follows the spelling: 27 alone, 2 before k/g", () => {
+  expect(filedUnder("sing", "027")).toBe(true);
+  expect(filedUnder("bank", "927")).toBe(true);
+  expect(filedUnder("think", "127")).toBe(true);
+});
+
+test("slurs are dropped and acronyms are uppercase", () => {
+  expect(filedUnder("fag", "8")).toBe(false);
+  expect(filedUnder("FBI", "89")).toBe(true);
+});
+
+test("pins keep a chunk and stop other chunks from crossing it", () => {
+  const pins = [{ start: 0, end: 4, word: "turtle" }];
+  const breakdowns = findBreakdowns("14159265", 0, pins);
+  expect(breakdowns.length).toBeGreaterThan(0);
+  for (const breakdown of breakdowns) {
+    expect(breakdown.chunks[0]).toBe("1415");
+  }
 });
 
 test("words are alphabetical within tiers and same-sound spellings are merged", () => {
