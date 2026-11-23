@@ -14,11 +14,11 @@ const PAGE_SIZE = 25;
 
 const LEVELS: Array<{ level: Level; label: string; param: string }> = [
   { level: 0, label: "common", param: "common" },
-  { level: 1, label: "familiar", param: "familiar" },
+  { level: 1, label: "uncommon", param: "uncommon" },
   { level: 2, label: "all", param: "all" },
 ];
 
-const TIER_LABELS = ["", "familiar", "rare"];
+const TIER_LABELS = ["", "uncommon", "rare"];
 
 function sanitizeDigits(value: string) {
   return value.replace(/\D/g, "");
@@ -30,7 +30,8 @@ function initialDigitsFromUrl() {
 
 function initialLevelFromUrl(): Level {
   const param = new URLSearchParams(window.location.search).get("words");
-  return LEVELS.find((entry) => entry.param === param)?.level ?? 0;
+  // "familiar" is the old name for "uncommon"; keep old links working.
+  return LEVELS.find((entry) => entry.param === (param === "familiar" ? "uncommon" : param))?.level ?? 0;
 }
 
 // Kept words live in the URL as k=start-end-word,... so a phrase survives reload and sharing.

@@ -1,7 +1,7 @@
 import rawWords from "../words.json";
 
 // Built by scripts/build_words.py: digits -> [word, tier, concrete, otherSpellings?].
-// Tier 0 = common, 1 = familiar, 2 = obscure; concrete = 1 for easy-to-picture words.
+// Tier 0 = common, 1 = uncommon, 2 = rare; concrete = 1 for easy-to-picture words.
 type RawEntry = [string, number, number] | [string, number, number, string];
 
 export type Level = 0 | 1 | 2;

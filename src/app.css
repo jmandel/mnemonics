@@ -95,7 +95,7 @@ h1 {
   outline-offset: -1px;
 }
 
-/* Small three-stop slider: common, familiar, all. */
+/* Small three-stop slider: common, uncommon, all. */
 .level-slider {
   display: flex;
   align-items: center;

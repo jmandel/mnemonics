@@ -6,7 +6,7 @@
 familiarity tier, display casing (names and acronyms), and same-sound spellings merged.
 
 Output: {digits: [[shown, tier, concrete, "other/spellings"?], ...]}, tier 0 = common,
-1 = familiar, 2 = obscure; concrete = 1 for easy-to-picture words.
+1 = uncommon, 2 = rare; concrete = 1 for easy-to-picture words.
 
 Also writes practice.json: {"words": [[word, "f8 sh6 ng27", "tag,tag", zipf*10], ...],
 "examples": {digits: word}} with practice prompts (common, picturable base forms whose
@@ -81,7 +81,7 @@ ABBREVIATIONS = {
 
 # Names: Hunspell's curated proper nouns (Canberra, Picasso, Godzilla) are kept down to
 # Zipf 3.0; others need 3.8, which drops the long tail of surnames (Accetta, Szeto).
-# Plain first names below common level go to rare so they don't crowd familiar words.
+# Plain first names below common level go to rare so they don't crowd uncommon words.
 MIN_LISTED_NAME_ZIPF = 3.0
 MIN_NAME_ZIPF = 3.8
 COMMON_NAME_ZIPF = 4.3
@@ -223,7 +223,7 @@ def capitalize(word):
 
 
 def classify(word, zipf, is_name, prevalence, concreteness, first_names):
-    """Return (tier, sort_score, concrete). Tier 0 = common, 1 = familiar, 2 = obscure."""
+    """Return (tier, sort_score, concrete). Tier 0 = common, 1 = uncommon, 2 = rare."""
     family = lemmas(word)
     # Inflections inherit how well known their base word is ("metered" from "meter").
     known = max((prevalence[w] for w in family if w in prevalence), default=None)
@@ -498,7 +498,7 @@ def main():
                     [word, sounds_for(chosen[word]), ",".join(spelling_tags(word, chosen[word])), round(zipf * 10)]
                 )
             # About page example for short numbers: the most picturable everyday word.
-            # Familiar words only count when no common one fits (88: "fife", not "five").
+            # Uncommon words only count when no common one fits (88: "fife", not "five").
             if len(digits) <= 2 and tier <= 1 and not is_name and is_base_form(word) and is_clean(word, avoid):
                 if word not in NUMBER_WORDS and re.fullmatch("[a-z]+", word):
                     rating = concreteness.get(word, 0)
