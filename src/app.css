@@ -453,6 +453,10 @@ h1 {
   animation: shake 220ms ease-in-out;
 }
 
+.prompt.miss {
+  cursor: pointer;
+}
+
 @keyframes shake {
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }

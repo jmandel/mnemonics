@@ -29,7 +29,8 @@ type Challenge = { phrases: Phrase[]; code: string; score: number; level: number
 
 type Result = Run & { shown: Phrase[]; levelChange: number; hintsOff: boolean; previousBest: number };
 
-const MISS_PAUSE_MS = 1300;
+// After a miss the clock pauses until you tap; taps sooner than this are double-taps.
+const MISS_MIN_MS = 300;
 
 const KEY_SOUNDS: Record<string, string> = {
   "0": "s z",
@@ -211,6 +212,7 @@ export function Practice() {
     typed: "",
     lastKey: 0,
     shownAt: 0,
+    pausedAt: 0,
     endAt: 0,
     queue: [] as Phrase[],
     shown: [] as Phrase[],
@@ -303,8 +305,24 @@ export function Practice() {
     setRemaining(RUN_SECONDS * 1000);
   }
 
+  // Leave a miss's answer: the clock resumes and the next prompt appears.
+  function continueAfterMiss() {
+    const state = run.current;
+    const now = performance.now();
+    if (state.phase !== "miss" || now - state.pausedAt < MISS_MIN_MS) {
+      return;
+    }
+    state.endAt += now - state.pausedAt;
+    setRunPhase("running");
+    showNext();
+  }
+
   function press(digit: string) {
     const state = run.current;
+    if (state.phase === "miss") {
+      continueAfterMiss();
+      return;
+    }
     if (state.phase !== "running" || !state.phrase) {
       return;
     }
@@ -353,18 +371,14 @@ export function Practice() {
     setMissAt(index);
     setWrongDigit(digit);
     setStreak(0);
+    // Wrong answer: pause the clock and wait for a tap so you can study the answer.
+    state.pausedAt = now;
     setRunPhase("miss");
-    setTimeout(() => {
-      if (run.current.phase === "miss") {
-        setRunPhase("running");
-        showNext();
-      }
-    }, MISS_PAUSE_MS);
   }
 
-  // Countdown.
+  // Countdown; it stops while a miss's answer is showing.
   useEffect(() => {
-    if (phase !== "running" && phase !== "miss") {
+    if (phase !== "running") {
       return;
     }
     let frame = 0;
@@ -395,6 +409,9 @@ export function Practice() {
       } else if ((event.key === "Enter" || event.key === " ") && (state.phase === "ready" || state.phase === "done")) {
         event.preventDefault();
         start();
+      } else if ((event.key === "Enter" || event.key === " ") && state.phase === "miss") {
+        event.preventDefault();
+        continueAfterMiss();
       } else if (event.key === "Escape" && (state.phase === "running" || state.phase === "miss")) {
         abort();
       }
@@ -443,7 +460,11 @@ export function Practice() {
         ) : null}
       </div>
 
-      <div className={`prompt ${phase}`} data-testid="prompt">
+      <div
+        className={`prompt ${phase}`}
+        data-testid="prompt"
+        onPointerDown={phase === "miss" ? continueAfterMiss : undefined}
+      >
         {phase === "ready" ? (
           <button className="start" data-testid="start" type="button" onClick={start}>
             Start
@@ -465,7 +486,7 @@ export function Practice() {
           <div className="miss-view" data-testid="miss">
             <Breakdown missAt={missAt} phrase={phrase} />
             <p className="miss-note">
-              you typed {wrongDigit}, it's {missAt !== null ? expected[missAt] : ""}
+              you typed {wrongDigit}, it's {missAt !== null ? expected[missAt] : ""} · clock paused, tap to go on
             </p>
           </div>
         ) : null}
