@@ -115,6 +115,9 @@ MISPRONOUNCED = {
     "backstreet",  # the r is missing
 }
 
+# Two-letter acronyms worth keeping; other two-letter names and acronyms are noise.
+SPOKEN_ACRONYMS = {"tv", "dj", "pc", "uk", "ok"}
+
 # Number words make confusing examples ("five" for 88).
 NUMBER_WORDS = {
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
@@ -471,6 +474,12 @@ def main():
                 if is_name and (
                     zipf < (MIN_LISTED_NAME_ZIPF if word in cased else MIN_NAME_ZIPF) or word in ABBREVIATIONS
                 ):
+                    continue
+                # Fragments: vowel-less abbreviations ("mt", "pr", "mm") and two-letter names
+                # and acronyms ("Le", "AL"), except a few everyone says as letters ("TV").
+                if not re.search("[aeiouy]", word) and not shown.isupper():
+                    continue
+                if len(word) <= 2 and is_name and word not in SPOKEN_ACRONYMS:
                     continue
                 # Short words must be known: drops "sh", "hm", "ers", "ras".
                 if not is_name and len(word) <= 3 and zipf < 4 and not (lemmas(word) & prevalence.keys()):

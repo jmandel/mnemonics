@@ -62,18 +62,13 @@ type ChunkRowProps = {
   chunk: string;
   level: Level;
   pin: Pin | undefined;
-  // Already listed in full higher up the page: show one line until opened.
-  repeat: boolean;
-  open: boolean;
-  showRarer: boolean;
-  onOpen: () => void;
-  onShowRarer: (show: boolean) => void;
   onPick: (word: string) => void;
   onUnpin: () => void;
 };
 
+// Every word for the chunk at the chosen level, one line per familiarity tier.
 function ChunkRow(props: ChunkRowProps) {
-  const { chunk, level, pin, repeat, open, showRarer } = props;
+  const { chunk, level, pin } = props;
 
   if (pin) {
     return (
@@ -91,28 +86,10 @@ function ChunkRow(props: ChunkRowProps) {
     );
   }
 
-  const words = wordsFor(chunk);
-  const atLevel = countAtLevel(words, level);
-  const visible = showRarer ? words : words.slice(0, atLevel);
-  const hidden = words.length - visible.length;
+  const visible = wordsFor(chunk).slice(0, countAtLevel(wordsFor(chunk), level));
   const tiers = ([0, 1, 2] as const)
     .map((tier) => ({ tier, entries: visible.filter((entry) => entry.tier === tier) }))
     .filter(({ entries }) => entries.length > 0);
-
-  if (repeat && !open) {
-    return (
-      <div className="chunk" data-testid="chunk">
-        <span className="chunk-digits">{chunk}</span>
-        <button className="repeat" type="button" onClick={props.onOpen} title="Listed above; tap to show here">
-          <span className="tier-label">↑</span>{" "}
-          {words
-            .slice(0, atLevel)
-            .map((entry) => entry.word)
-            .join("  ")}
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="chunk" data-testid="chunk">
@@ -125,16 +102,6 @@ function ChunkRow(props: ChunkRowProps) {
             {entries.map((entry) => (
               <WordButton entry={entry} key={entry.word} onPick={props.onPick} />
             ))}
-            {index === tiers.length - 1 && hidden > 0 ? (
-              <button className="more-words" type="button" onClick={() => props.onShowRarer(true)}>
-                +{hidden} rarer
-              </button>
-            ) : null}
-            {index === tiers.length - 1 && showRarer && words.length > atLevel ? (
-              <button className="more-words" type="button" onClick={() => props.onShowRarer(false)}>
-                fewer
-              </button>
-            ) : null}
           </p>
         ))}
       </div>
@@ -142,27 +109,11 @@ function ChunkRow(props: ChunkRowProps) {
   );
 }
 
-function toggled(set: Set<string>, key: string, on: boolean) {
-  const next = new Set(set);
-
-  if (on) {
-    next.add(key);
-  } else {
-    next.delete(key);
-  }
-
-  return next;
-}
-
 export function Finder() {
   const [input, setInput] = useState(initialDigitsFromUrl);
   const [level, setLevel] = useState<Level>(initialLevelFromUrl);
   const [pins, setPins] = useState<Pin[]>(initialPinsFromUrl);
   const [shown, setShown] = useState(PAGE_SIZE);
-  // Chunk positions whose repeated one-line summary was opened, and digit strings
-  // whose rarer words are showing. Both apply to every copy on the page.
-  const [opened, setOpened] = useState<Set<string>>(new Set());
-  const [rarer, setRarer] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
   const digits = useDeferredValue(input);
   const breakdowns = useMemo(() => findBreakdowns(digits, level, pins), [digits, level, pins]);
@@ -204,15 +155,19 @@ export function Finder() {
   function changeDigits(next: string) {
     setInput(next);
     setPins([]);
-    setOpened(new Set());
-    setRarer(new Set());
   }
 
   useEffect(() => setShown(PAGE_SIZE), [digits, level, pins]);
 
   const sortedPins = [...pins].sort((left, right) => left.start - right.start);
   const phrase = sortedPins.map((pin) => pin.word).join(" ");
-  const seen = new Set<string>();
+  // How many splits use each number of chunks, for the group labels.
+  const groupSizes = new Map<number, number>();
+  for (const breakdown of breakdowns) {
+    groupSizes.set(breakdown.chunks.length, (groupSizes.get(breakdown.chunks.length) ?? 0) + 1);
+  }
+  const lastGroup = breakdowns[breakdowns.length - 1]?.chunks.length;
+  const capped = breakdowns.length >= 500;
 
   async function copyPhrase() {
     await navigator.clipboard.writeText(phrase);
@@ -224,22 +179,22 @@ export function Finder() {
     <main className="page">
       <header className="top">
         <div className="title-row">
-          <div className="levels" role="radiogroup" aria-label="Words to use">
-            <span className="levels-label">words:</span>
-            {LEVELS.map((entry) => (
-              <button
-                aria-checked={level === entry.level}
-                className={level === entry.level ? "active" : ""}
-                data-testid={`level-${entry.param}`}
-                key={entry.param}
-                role="radio"
-                type="button"
-                onClick={() => setLevel(entry.level)}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </div>
+          <label className="level-slider">
+            <span className="levels-label">words</span>
+            <input
+              aria-valuetext={LEVELS[level]!.label}
+              data-testid="level-slider"
+              max={2}
+              min={0}
+              step={1}
+              type="range"
+              value={level}
+              onChange={(event) => setLevel(Number(event.target.value) as Level)}
+            />
+            <span className="level-name" data-testid="level-name">
+              {LEVELS[level]!.label}
+            </span>
+          </label>
         </div>
         <input
           className="num-input"
@@ -283,7 +238,7 @@ export function Finder() {
             ? level < 2
               ? `No split uses only ${LEVELS[level]!.label} words.`
               : "No way to split these digits into words."
-            : `${breakdowns.length}${breakdowns.length >= 500 ? "+" : ""} ${breakdowns.length === 1 ? "way" : "ways"} to split · fewest chunks first · tap a word to keep it${breakdowns.length > 1 ? " · ↑ = listed above" : ""}`}
+            : `${breakdowns.length}${capped ? "+" : ""} ${breakdowns.length === 1 ? "way" : "ways"} to split · tap a word to keep it`}
           {shorterAt ? (
             <>
               {" · "}
@@ -313,19 +268,29 @@ export function Finder() {
         </div>
       )}
 
-      {breakdowns.slice(0, shown).map((breakdown) => {
+      {breakdowns.slice(0, shown).map((breakdown, index) => {
         let start = 0;
+        const parts = breakdown.chunks.length;
+        const firstOfGroup = breakdowns[index - 1]?.chunks.length !== parts;
+        const size = groupSizes.get(parts) ?? 0;
 
         return (
           <section className="breakdown" data-testid="breakdown" key={breakdown.key}>
+            {firstOfGroup ? (
+              <p className="group-label" data-testid="group-label">
+                {parts} {parts === 1 ? "chunk" : "chunks"}
+                <span>
+                  {size}
+                  {capped && parts === lastGroup ? "+" : ""} {size === 1 ? "way" : "ways"}
+                </span>
+              </p>
+            ) : null}
             <h2>{breakdown.chunks.join(" · ")}</h2>
             <div className="chunks">
               {breakdown.chunks.map((chunk) => {
                 const chunkStart = start;
                 const end = start + chunk.length;
                 const key = spanKey(chunkStart, end);
-                const repeat = seen.has(key);
-                seen.add(key);
                 start = end;
 
                 return (
@@ -333,13 +298,8 @@ export function Finder() {
                     chunk={chunk}
                     key={key}
                     level={level}
-                    open={opened.has(key)}
                     pin={pins.find((pin) => pin.start === chunkStart && pin.end === end)}
-                    repeat={repeat}
-                    showRarer={rarer.has(chunk)}
-                    onOpen={() => setOpened(toggled(opened, key, true))}
                     onPick={(word) => setPins([...pins, { start: chunkStart, end, word }])}
-                    onShowRarer={(show) => setRarer(toggled(rarer, chunk, show))}
                     onUnpin={() => setPins(pins.filter((pin) => pin.start !== chunkStart))}
                   />
                 );
