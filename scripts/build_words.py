@@ -9,7 +9,7 @@ Output: {digits: [[shown, tier, concrete, "other/spellings"?], ...]}, tier 0 = c
 1 = uncommon, 2 = rare; concrete = 1 for easy-to-picture words.
 
 Also writes practice.json: {"words": [[word, "f8 sh6 ng27", "tag,tag", zipf*10], ...],
-"examples": {digits: word}} with practice prompts (common, picturable base forms whose
+"examples": {digits: word}, "rules": {tier thresholds and counts, for the About page}} with practice prompts (common, picturable base forms whose
 answer follows from the rules) and the About page's example word for 0-99.
 
 Run from the repo root:  uv run --locked scripts/build_words.py
@@ -85,6 +85,14 @@ ABBREVIATIONS = {
 MIN_LISTED_NAME_ZIPF = 3.0
 MIN_NAME_ZIPF = 3.8
 COMMON_NAME_ZIPF = 4.3
+
+# Tier thresholds. "Known" is the share of people who know the word (prevalence), "zipf"
+# its wordfreq frequency. These are written to practice.json so the About page shows
+# exactly the rules the build used.
+COMMON_KNOWN, COMMON_KNOWN_ZIPF = 0.97, 2.5
+UNCOMMON_KNOWN, UNCOMMON_KNOWN_ZIPF = 0.85, 1.5
+COMMON_ZIPF, UNCOMMON_ZIPF = 3.8, 2.8  # words without prevalence data
+CONCRETE_RATING = 4.0
 
 CONTRACTION = re.compile(
     r"[a-z]+n't|y'all|(i|you|we|they|he|she|it|that|there|here|who|what|where|let)'(ll|re|ve|d|m|s)"
@@ -232,9 +240,13 @@ def classify(word, zipf, is_name, prevalence, concreteness, first_names):
     if is_name:
         tier = 0 if zipf >= COMMON_NAME_ZIPF else 2 if word in first_names else 1
     elif known is not None:
-        tier = 0 if known >= 0.97 and zipf >= 2.5 else 1 if known >= 0.85 and zipf >= 1.5 else 2
+        tier = (
+            0 if known >= COMMON_KNOWN and zipf >= COMMON_KNOWN_ZIPF
+            else 1 if known >= UNCOMMON_KNOWN and zipf >= UNCOMMON_KNOWN_ZIPF
+            else 2
+        )
     else:
-        tier = 0 if zipf >= 3.8 else 1 if zipf >= 2.8 else 2
+        tier = 0 if zipf >= COMMON_ZIPF else 1 if zipf >= UNCOMMON_ZIPF else 2
 
     # Within a tier: frequency first, nudged toward words people know and can picture.
     score = zipf + (2.0 * ((known or 0.5) - 0.9) if not is_name else -0.6)
@@ -242,7 +254,7 @@ def classify(word, zipf, is_name, prevalence, concreteness, first_names):
         score += 0.35 * (conc - 3.0)
     # Easy to picture: the word itself is rated 4+ on the 1-5 concreteness scale (turtle,
     # piano). Not inherited from a base form, which would make "could" picturable via "can".
-    concrete = concreteness.get(word, 0) >= 4.0
+    concrete = concreteness.get(word, 0) >= CONCRETE_RATING
     return tier, round(score, 3), concrete
 
 
@@ -520,7 +532,18 @@ def main():
     print(f"{len(out)} digit keys, {total} words -> {OUT.name} ({OUT.stat().st_size // 1024} KB)", file=sys.stderr)
     practice.sort()
     best_examples = {digits: min(options)[1] for digits, options in sorted(examples.items())}
-    PRACTICE_OUT.write_text(json.dumps({"words": practice, "examples": best_examples}, separators=(",", ":")))
+    tier_counts = [sum(1 for entries in out.values() for entry in entries if entry[1] == tier) for tier in range(3)]
+    rules = {
+        "commonKnown": COMMON_KNOWN, "commonKnownZipf": COMMON_KNOWN_ZIPF,
+        "uncommonKnown": UNCOMMON_KNOWN, "uncommonKnownZipf": UNCOMMON_KNOWN_ZIPF,
+        "commonZipf": COMMON_ZIPF, "uncommonZipf": UNCOMMON_ZIPF,
+        "commonNameZipf": COMMON_NAME_ZIPF, "minListedNameZipf": MIN_LISTED_NAME_ZIPF,
+        "minNameZipf": MIN_NAME_ZIPF, "concreteRating": CONCRETE_RATING,
+        "tierCounts": tier_counts, "practiceWords": len(practice),
+    }
+    PRACTICE_OUT.write_text(
+        json.dumps({"words": practice, "examples": best_examples, "rules": rules}, separators=(",", ":"))
+    )
     print(f"{len(practice)} practice words -> {PRACTICE_OUT.name} ({PRACTICE_OUT.stat().st_size // 1024} KB)", file=sys.stderr)
 
 

@@ -205,7 +205,7 @@ export function Finder() {
               onChange={(event) => setLevel(Number(event.target.value) as Level)}
             />
             <span className="level-name" data-testid="level-name">
-              {LEVELS[level]!.label} words
+              {LEVELS[level]!.label}
             </span>
           </label>
         </div>

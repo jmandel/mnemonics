@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import { digitsOfWord, exampleWord } from "../src/engine";
 import {
+  buildRules,
   decodePhrases,
   digitOwners,
   examples,
@@ -29,6 +30,10 @@ test("every example the About page gives matches the word data", () => {
   expect(examples["61"]).toBe("sheet");
   expect(examples["71"]).toBe("cat");
   expect(Object.keys(examples).length).toBeGreaterThanOrEqual(105);
+  // The About page's tier description reads these from the build.
+  expect(buildRules.commonKnown).toBeGreaterThan(buildRules.uncommonKnown);
+  expect(buildRules.tierCounts.reduce((sum, count) => sum + count, 0)).toBeGreaterThan(40000);
+  expect(buildRules.practiceWords).toBe(words.length);
 });
 
 test("ambiguous words resolve to the spelled form or are dropped", () => {

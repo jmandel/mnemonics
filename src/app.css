@@ -83,7 +83,7 @@ h1 {
 .num-input {
   width: 100%;
   box-sizing: border-box;
-  font: 600 min(1.6rem, 4.9vw)/1.2 var(--mono);
+  font: 600 min(1.6rem, 4.3vw)/1.2 var(--mono);
   letter-spacing: 0.06em;
   color: inherit;
   background: transparent;
@@ -97,25 +97,39 @@ h1 {
   outline-offset: -1px;
 }
 
-/* Small three-stop slider (common, uncommon, all) with its setting underneath. */
+/* Small three-stop slider (common, uncommon, all) with its setting beside it. */
 .level-slider {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
-  font-size: 0.78rem;
-  color: var(--muted);
+  gap: 0.4rem;
+  font-size: 0.85rem;
   flex: none;
 }
 
 .level-slider input {
-  width: 5.5rem;
+  width: 4.5rem;
   margin: 0;
   accent-color: var(--ink);
 }
 
 .level-name {
+  width: 5.6em;
   white-space: nowrap;
+}
+
+@media (max-width: 30rem) {
+  .search-row {
+    gap: 0.5rem;
+  }
+
+  .level-slider {
+    font-size: 0.8rem;
+    gap: 0.3rem;
+  }
+
+  .level-slider input {
+    width: 3.4rem;
+  }
 }
 
 /* Subtle header above each run of splits with the same number of chunks. */
@@ -696,6 +710,26 @@ h1 {
 
 .about-lead {
   margin: 0.3rem 0 0.8rem;
+}
+
+.about-text {
+  margin: 0.5rem 0;
+  max-width: 44rem;
+}
+
+.about-list {
+  margin: 0.3rem 0 0.8rem;
+  padding-left: 1.2rem;
+  max-width: 44rem;
+}
+
+.about-list li {
+  margin: 0.3rem 0;
+}
+
+.tier-table td:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
 }
 
 .about-note {

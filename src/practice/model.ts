@@ -3,9 +3,30 @@ import rawPractice from "../../practice.json";
 // Built by scripts/build_words.py: words are [word, "f8 sh6 ng27", "tag,tag", zipf*10];
 // examples maps 0-99 to the About page's example word.
 type RawPracticeWord = [string, string, string, number];
-const raw = rawPractice as unknown as { words: RawPracticeWord[]; examples: Record<string, string> };
+// rules: the tier thresholds the build used, plus tier sizes, for the About page.
+export type BuildRules = {
+  commonKnown: number;
+  commonKnownZipf: number;
+  uncommonKnown: number;
+  uncommonKnownZipf: number;
+  commonZipf: number;
+  uncommonZipf: number;
+  commonNameZipf: number;
+  minListedNameZipf: number;
+  minNameZipf: number;
+  concreteRating: number;
+  tierCounts: [number, number, number];
+  practiceWords: number;
+};
+
+const raw = rawPractice as unknown as {
+  words: RawPracticeWord[];
+  examples: Record<string, string>;
+  rules: BuildRules;
+};
 
 export const examples = raw.examples;
+export const buildRules = raw.rules;
 
 export type Sound = { label: string; digits: string };
 
