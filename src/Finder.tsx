@@ -179,10 +179,22 @@ export function Finder() {
   return (
     <main className="page">
       <header className="top">
-        <div className="title-row">
+        {/* Number and word-level slider share one row. */}
+        <div className="search-row">
+          <input
+            className="num-input"
+            data-testid="num-input"
+            aria-label="Digits"
+            inputMode="numeric"
+            autoFocus
+            autoComplete="off"
+            placeholder="Enter a number"
+            value={input}
+            onChange={(event) => changeDigits(sanitizeDigits(event.target.value))}
+          />
           <label className="level-slider">
-            <span className="levels-label">words</span>
             <input
+              aria-label="Words to show"
               aria-valuetext={LEVELS[level]!.label}
               data-testid="level-slider"
               max={2}
@@ -193,21 +205,10 @@ export function Finder() {
               onChange={(event) => setLevel(Number(event.target.value) as Level)}
             />
             <span className="level-name" data-testid="level-name">
-              {LEVELS[level]!.label}
+              {LEVELS[level]!.label} words
             </span>
           </label>
         </div>
-        <input
-          className="num-input"
-          data-testid="num-input"
-          aria-label="Digits"
-          inputMode="numeric"
-          autoFocus
-          autoComplete="off"
-          placeholder="Enter a number"
-          value={input}
-          onChange={(event) => changeDigits(sanitizeDigits(event.target.value))}
-        />
         {sortedPins.length > 0 ? (
           <div className="phrase" data-testid="phrase">
             {sortedPins.map((pin) => (
