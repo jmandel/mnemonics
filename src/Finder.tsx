@@ -18,19 +18,6 @@ const LEVELS: Array<{ level: Level; label: string; param: string }> = [
   { level: 2, label: "all", param: "all" },
 ];
 
-const SOUND_KEY: Array<[string, string]> = [
-  ["0", "s z"],
-  ["1", "t d th"],
-  ["2", "n"],
-  ["3", "m"],
-  ["4", "r"],
-  ["5", "l"],
-  ["6", "j sh ch"],
-  ["7", "k g"],
-  ["8", "f v"],
-  ["9", "p b"],
-];
-
 const TIER_LABELS = ["", "familiar", "rare"];
 
 function sanitizeDigits(value: string) {
@@ -290,15 +277,6 @@ export function Finder() {
         ) : null}
       </header>
 
-      <p className="key" aria-label="Digit sounds">
-        {SOUND_KEY.map(([digit, sounds]) => (
-          <span key={digit}>
-            <b>{digit}</b> {sounds}
-          </span>
-        ))}
-        <span className="key-note">ng = 27</span>
-      </p>
-
       {digits ? (
         <p className="summary" data-testid="summary">
           {breakdowns.length === 0
@@ -318,7 +296,7 @@ export function Finder() {
       ) : (
         <div className="intro">
           <p>
-            Each digit stands for a consonant sound (key above, or see <a href="#about">About</a>); vowels are free. Type a number, then tap a word in
+            Each digit stands for a consonant sound (see <a href="#about">About</a>); vowels are free. Type a number, then tap a word in
             each chunk to build a phrase you can picture.
           </p>
           <p>

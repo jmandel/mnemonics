@@ -95,24 +95,6 @@ h1 {
   outline-offset: -1px;
 }
 
-.key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.15rem 0.9rem;
-  margin: 0.5rem 0 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.key-note {
-  font-family: var(--mono);
-}
-
-.key b {
-  font-family: var(--mono);
-  color: var(--ink);
-}
-
 .levels {
   display: flex;
   align-items: baseline;
@@ -362,11 +344,6 @@ h1 {
 
   .tier-line {
     row-gap: 0;
-  }
-
-  .key {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
   }
 }
 
