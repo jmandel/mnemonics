@@ -521,12 +521,174 @@ h1 {
 
 .typed {
   margin: 0;
-  height: 2.2rem;
+  height: 3rem;
   overflow: hidden;
   display: flex;
   justify-content: center;
-  gap: 0.15rem;
-  font: 600 1.6rem/1.3 var(--mono);
+  align-items: flex-start;
+  gap: 1.1rem;
+}
+
+/* Typed digits: words apart, sounds a little apart, each sound labeled underneath. */
+.typed-word {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.typed-sound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.typed-digits {
+  display: flex;
+  gap: 0.05rem;
+  font: 600 1.5rem/1.25 var(--mono);
+}
+
+.typed-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* The prompt word: letters of typed sounds get an underline bar (no reflow), silent
+   letters fade once passed, and in a phrase the word being typed is full strength. */
+.lit-word {
+  display: inline-block;
+  margin: 0 0.25em;
+}
+
+.phrase-text .lit-word:not(.current) {
+  color: color-mix(in srgb, var(--ink) 72%, var(--bg));
+}
+
+.phrase-text:has(.current) .lit-word.current,
+.phrase-text:not(:has(.current)) .lit-word {
+  color: var(--ink);
+}
+
+.letter.lit {
+  box-shadow: inset 0 -0.12em 0 currentColor;
+}
+
+.letter.silent {
+  opacity: 0.3;
+}
+
+/* "Which word is this number?" */
+.pick-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.pick-number {
+  font: 700 clamp(1.8rem, 9vw, 2.6rem)/1 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.pick-question {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pick-prompt.pop {
+  animation: pop 140ms ease-out;
+}
+
+/* Choices take exactly the keypad's footprint so nothing moves. */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 0.45rem;
+  height: calc(4 * 3.9rem + 3 * 0.45rem);
+  touch-action: manipulation;
+}
+
+.choice {
+  position: relative;
+  font: inherit;
+  font-size: clamp(1.1rem, 5vw, 1.45rem);
+  font-weight: 600;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 6%, var(--bg));
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  overflow-wrap: anywhere;
+  padding: 0.5rem;
+}
+
+.choice:active {
+  background: color-mix(in srgb, var(--ink) 16%, var(--bg));
+}
+
+.choice-key {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.55rem;
+  font: 600 0.72rem var(--mono);
+  color: var(--muted);
+}
+
+.pick-review {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.pick-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.7rem;
+  align-items: baseline;
+  font-size: 1.1rem;
+}
+
+.pick-row .lit-word {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pick-row.picked {
+  color: var(--muted);
+}
+
+.pick-row.picked .lit-word {
+  text-decoration: line-through;
+}
+
+.pick-digits {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pick-digits b {
+  font-family: var(--mono);
+  color: var(--ink);
+  margin-left: 0.1rem;
+}
+
+/* During a pick review the choices stay put: answer outlined, pick struck through. */
+.choice.answer {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.choice.picked {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.pick-note {
+  font-size: 0.78rem;
+  text-align: right;
 }
 
 .slot {

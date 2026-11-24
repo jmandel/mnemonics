@@ -8,8 +8,9 @@ familiarity tier, display casing (names and acronyms), and same-sound spellings 
 Output: {digits: [[shown, tier, concrete, "other/spellings"?], ...]}, tier 0 = common,
 1 = uncommon, 2 = rare; concrete = 1 for easy-to-picture words.
 
-Also writes practice.json: {"words": [[word, "f8 sh6 ng27", "tag,tag", zipf*10], ...],
-"examples": {digits: word}, "rules": {tier thresholds and counts, for the About page}} with practice prompts (common, picturable base forms whose
+Also writes practice.json: {"words": [[word, "f8 sh6 ng27", "tag,tag", zipf*10, letter
+alignment], ...], "examples": {digits: word}, "rules": {tier thresholds and counts, for the
+About page}, "traps": {digits a letter-reader would see: [words that aren't that number]}} with practice prompts (common, picturable base forms whose
 answer follows from the rules) and the About page's example word for 0-99.
 
 Run from the repo root:  uv run --locked scripts/build_words.py
@@ -375,6 +376,89 @@ SOUND_LABELS = {
 }
 
 
+# Letter clusters that can spell each consonant sound, longest first. Silent letters
+# (the k in knight, the b in lamb) are deliberately absent so they align to nothing.
+GRAPHEMES = {
+    "S": ["ss", "sc", "ce", "se", "s", "c", "z", "ps"],
+    "Z": ["zz", "se", "ze", "ss", "s", "z", "x"],
+    "T": ["tt", "ed", "th", "t"],
+    "D": ["dd", "ed", "d"],
+    "TH": ["th"],
+    "DH": ["th"],
+    "N": ["nn", "n"],
+    "M": ["mm", "m"],
+    "R": ["rr", "rh", "r"],
+    "ER": ["our", "ear", "er", "ir", "ur", "or", "ar", "yr", "re", "r"],
+    "L": ["ll", "le", "l"],
+    "CH": ["tch", "ch", "t", "c"],
+    "JH": ["dge", "dg", "ge", "gg", "j", "g", "d"],
+    "SH": ["sch", "sh", "ti", "ci", "si", "ss", "ch", "s", "c"],
+    "ZH": ["si", "ge", "s", "g", "z"],
+    "K": ["ck", "cc", "ch", "qu", "kk", "c", "k", "q"],
+    "G": ["gg", "gh", "gu", "g"],
+    "NG": ["ng", "n"],
+    "F": ["ff", "ph", "gh", "f"],
+    "V": ["vv", "v", "f"],
+    "P": ["pp", "p"],
+    "B": ["bb", "b"],
+}
+# Clusters spelling two sounds at once: x is k + s.
+DOUBLE_GRAPHEMES = {("K", "S"): ["x"], ("G", "Z"): ["x"], ("K", "SH"): ["x"]}
+
+
+def align_letters(word, phones):
+    """Which consonant sound each letter belongs to, as one character per letter: the
+    sound's index (0-9, a-z) or "-" for vowels and silent letters. "" if no alignment.
+    "knight" -> "-0---1": k silent, n is sound 0, t is sound 1."""
+    sounds = [phone for phone in phones if phone in SOUND_LABELS]
+    n, m = len(word), len(sounds)
+    inf = float("inf")
+    cost = [[inf] * (m + 1) for _ in range(n + 1)]
+    back = [[None] * (m + 1) for _ in range(n + 1)]
+    cost[0][0] = 0
+    for i in range(n + 1):
+        for j in range(m + 1):
+            here = cost[i][j]
+            if here == inf:
+                continue
+            if i < n:
+                # Skip a letter: free for vowels and w/h/y, costly for a consonant (silent).
+                skip = here + (0 if word[i] in "aeiouwhy'-" else 1)
+                if skip < cost[i + 1][j]:
+                    cost[i + 1][j], back[i + 1][j] = skip, (i, j, None)
+            if j < m:
+                for cluster in GRAPHEMES.get(sounds[j], []):
+                    if word.startswith(cluster, i) and here < cost[i + len(cluster)][j + 1]:
+                        cost[i + len(cluster)][j + 1] = here
+                        back[i + len(cluster)][j + 1] = (i, j, (j,))
+            if j + 1 < m:
+                for cluster in DOUBLE_GRAPHEMES.get((sounds[j], sounds[j + 1]), []):
+                    if word.startswith(cluster, i) and here < cost[i + len(cluster)][j + 2]:
+                        cost[i + len(cluster)][j + 2] = here
+                        back[i + len(cluster)][j + 2] = (i, j, (j, j + 1))
+    if cost[n][m] > 2:
+        return ""
+    marks = ["-"] * n
+    i, j = n, m
+    while (i, j) != (0, 0):
+        pi, pj, matched = back[i][j]
+        if matched:
+            for k in range(pi, i):
+                marks[k] = "0123456789abcdefghijklmnopqrstuvwxyz"[matched[0]]
+        i, j = pi, pj
+    return "".join(marks)
+
+
+def naive_digits(word):
+    """Digits from reading letters instead of sounds: every consonant letter counts and c
+    and g are always hard. Words whose true number differs are traps ("comb" reads as
+    739 but is 73)."""
+    w = re.sub(r"([b-df-hj-np-tv-z])\1", r"\1", word).replace("gh", "")
+    w = w.replace("tch", "C").replace("ch", "C").replace("sh", "C").replace("th", "t").replace("ph", "f")
+    w = w.replace("ck", "k").replace("qu", "k").replace("x", "ks")
+    return "".join("6" if ch == "C" else LETTER_DIGITS.get(ch, "7" if ch == "c" else "") for ch in w)
+
+
 def sounds_for(phones):
     """Consonant sounds with their digits, e.g. "f8 sh6 ng27" for "fishing"."""
     out = []
@@ -507,7 +591,13 @@ def main():
             zipf = zipf_frequency(word, "en")
             if is_practice_word(word, tier, is_name, concrete, digits, chosen[word], avoid):
                 practice.append(
-                    [word, sounds_for(chosen[word]), ",".join(spelling_tags(word, chosen[word])), round(zipf * 10)]
+                    [
+                        word,
+                        sounds_for(chosen[word]),
+                        ",".join(spelling_tags(word, chosen[word])),
+                        round(zipf * 10),
+                        align_letters(word, chosen[word]),
+                    ]
                 )
             # About page example for short numbers: the most picturable everyday word.
             # Uncommon words only count when no common one fits (88: "fife", not "five").
@@ -532,6 +622,14 @@ def main():
     print(f"{len(out)} digit keys, {total} words -> {OUT.name} ({OUT.stat().st_size // 1024} KB)", file=sys.stderr)
     practice.sort()
     best_examples = {digits: min(options)[1] for digits, options in sorted(examples.items())}
+    # Letter-reading traps for "which word is this number?" rounds, keyed by the number
+    # the letters suggest.
+    traps = defaultdict(list)
+    for word, sounds, *_ in practice:
+        digits = "".join(re.sub("[a-z]", "", token) for token in sounds.split())
+        naive = naive_digits(word)
+        if naive and naive != digits and len(naive) <= 6:
+            traps[naive].append(word)
     tier_counts = [sum(1 for entries in out.values() for entry in entries if entry[1] == tier) for tier in range(3)]
     rules = {
         "commonKnown": COMMON_KNOWN, "commonKnownZipf": COMMON_KNOWN_ZIPF,
@@ -542,7 +640,10 @@ def main():
         "tierCounts": tier_counts, "practiceWords": len(practice),
     }
     PRACTICE_OUT.write_text(
-        json.dumps({"words": practice, "examples": best_examples, "rules": rules}, separators=(",", ":"))
+        json.dumps(
+            {"words": practice, "examples": best_examples, "rules": rules, "traps": dict(sorted(traps.items()))},
+            separators=(",", ":"),
+        )
     )
     print(f"{len(practice)} practice words -> {PRACTICE_OUT.name} ({PRACTICE_OUT.stat().st_size // 1024} KB)", file=sys.stderr)
 

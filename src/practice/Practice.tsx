@@ -4,9 +4,9 @@ import { SKILL_NOTES } from "../majorSystem";
 import {
   LEVELS,
   RUN_SECONDS,
-  decodePhrases,
+  decodePrompts,
   digitOwners,
-  encodePhrases,
+  encodePrompts,
   examplesFor,
   hashString,
   loadStore,
@@ -14,20 +14,26 @@ import {
   nextLevel,
   phraseDigits,
   recordDigit,
+  recordPick,
   recordWord,
   saveStore,
   seededRandom,
   weakestSkills,
   type Phrase,
+  type PracticeWord,
+  type Prompt,
   type Run,
   type Store,
 } from "./model";
 
 type Phase = "ready" | "running" | "miss" | "done";
 
-type Challenge = { phrases: Phrase[]; code: string; score: number; level: number };
+type Challenge = { prompts: Prompt[]; code: string; score: number; level: number };
 
-type Result = Run & { shown: Phrase[]; levelChange: number; hintsOff: boolean; previousBest: number };
+type Result = Run & { shown: Prompt[]; levelChange: number; hintsOff: boolean; previousBest: number };
+
+// What went wrong, for the miss view: a typed digit, or a picked word.
+type Miss = { kind: "type"; at: number; digit: string } | { kind: "pick"; picked: PracticeWord };
 
 // After a miss the clock pauses until you tap; taps sooner than this are double-taps.
 const MISS_MIN_MS = 300;
@@ -58,9 +64,9 @@ function readChallenge(): Challenge | null {
   if (!code) {
     return null;
   }
-  const phrases = decodePhrases(code);
-  return phrases.length
-    ? { phrases, code, score: Number(params.get("s") ?? 0), level: Number(params.get("l") ?? 0) }
+  const prompts = decodePrompts(code);
+  return prompts.length
+    ? { prompts, code, score: Number(params.get("s") ?? 0), level: Number(params.get("l") ?? 0) }
     : null;
 }
 
@@ -115,6 +121,154 @@ function Breakdown({ phrase, missAt }: { phrase: Phrase; missAt: number | null }
               );
             })}
           </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Per typed position: which word and sound it belongs to, with the word's index.
+function positions(phrase: Phrase) {
+  const out: Array<{ wordIndex: number; soundIndex: number; sound: PracticeWord["sounds"][number] }> = [];
+  phrase.forEach((entry, wordIndex) => {
+    entry.sounds.forEach((sound, soundIndex) => {
+      for (let index = 0; index < sound.digits.length; index += 1) {
+        out.push({ wordIndex, soundIndex, sound });
+      }
+    });
+  });
+  return out;
+}
+
+// How many sounds of each word are fully typed.
+function soundsDone(phrase: Phrase, typedCount: number) {
+  const done = phrase.map(() => 0);
+  let position = 0;
+  phrase.forEach((entry, wordIndex) => {
+    for (const sound of entry.sounds) {
+      position += sound.digits.length;
+      if (position <= typedCount) {
+        done[wordIndex] += 1;
+      }
+    }
+  });
+  return done;
+}
+
+const VOWELISH = "aeiouwhy'-";
+
+// The word with the letters of each typed sound lit, and silent letters faded once passed.
+function LitWord({ entry, done, current }: { entry: PracticeWord; done: number; current: boolean }) {
+  if (!entry.align) {
+    return <span className={current ? "lit-word current" : "lit-word"}>{entry.word}</span>;
+  }
+  const marks = entry.align.split("");
+  let lastLit = -1;
+  marks.forEach((mark, index) => {
+    if (mark !== "-" && parseInt(mark, 36) < done) {
+      lastLit = index;
+    }
+  });
+  const complete = done >= entry.sounds.length;
+  return (
+    <span className={current ? "lit-word current" : "lit-word"}>
+      {entry.word.split("").map((letter, index) => {
+        const mark = marks[index]!;
+        const lit = mark !== "-" && parseInt(mark, 36) < done;
+        const silent = mark === "-" && !VOWELISH.includes(letter) && (complete || index < lastLit);
+        return (
+          <span className={lit ? "letter lit" : silent ? "letter silent" : "letter"} key={index}>
+            {letter}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+// Typed digits grouped by word, and within a word by sound, each sound labeled.
+function TypedDigits({ phrase, shown, missAt }: { phrase: Phrase; shown: string; missAt: number | null }) {
+  let position = 0;
+  return (
+    <>
+      {phrase.map((entry, wordIndex) => {
+        const groups = entry.sounds.map((sound) => {
+          const start = position;
+          position += sound.digits.length;
+          return { sound, start, digits: shown.slice(start, position) };
+        });
+        if (!groups.some((group) => group.digits)) {
+          return null;
+        }
+        return (
+          <span className="typed-word" key={wordIndex}>
+            {groups
+              .filter((group) => group.digits)
+              .map(({ sound, start, digits }, index) => (
+                <span className="typed-sound" key={index}>
+                  <span className="typed-digits">
+                    {digits.split("").map((digit, offset) => (
+                      <span className={start + offset === missAt ? "slot wrong" : "slot"} key={offset}>
+                        {digit}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="typed-label">{sound.label}</span>
+                </span>
+              ))}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+type ChoicesProps = {
+  choices: PracticeWord[];
+  onPick: (index: number) => void;
+  // After a wrong pick: mark the answer and the pick; any tap continues.
+  answer?: PracticeWord;
+  picked?: PracticeWord;
+};
+
+function Choices({ choices, onPick, answer, picked }: ChoicesProps) {
+  return (
+    <div className="choices" data-testid="choices">
+      {choices.map((entry, index) => (
+        <button
+          className={entry === answer ? "choice answer" : entry === picked ? "choice picked" : "choice"}
+          key={entry.word}
+          tabIndex={-1}
+          type="button"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            onPick(index);
+          }}
+        >
+          <span className="choice-key">{index + 1}</span>
+          {entry.word}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// After a wrong pick: your pick and the answer, sound by sound, so the trap is plain.
+function PickReview({ prompt, picked }: { prompt: Extract<Prompt, { kind: "pick" }>; picked: PracticeWord }) {
+  return (
+    <div className="pick-review">
+      {[picked, prompt.answer].map((entry) => (
+        <span className={entry === prompt.answer ? "pick-row answer" : "pick-row picked"} key={entry.word}>
+          <LitWord current={false} done={entry.sounds.length} entry={entry} />
+          <span className="pick-digits">
+            {entry.sounds.map((sound) => (
+              <span key={sound.label + sound.digits}>
+                {sound.label}
+                <b>{sound.digits}</b>
+              </span>
+            ))}
+          </span>
+          <span className="pick-note">{entry === prompt.answer ? "answer" : "your pick"}</span>
         </span>
       ))}
     </div>
@@ -195,10 +349,9 @@ export function Practice() {
   const [store, setStore] = useState<Store>(loadStore);
   const [challenge] = useState<Challenge | null>(readChallenge);
   const [phase, setPhase] = useState<Phase>("ready");
-  const [phrase, setPhrase] = useState<Phrase | null>(null);
+  const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [typed, setTyped] = useState("");
-  const [missAt, setMissAt] = useState<number | null>(null);
-  const [wrongDigit, setWrongDigit] = useState("");
+  const [miss, setMiss] = useState<Miss | null>(null);
   const [remaining, setRemaining] = useState(RUN_SECONDS * 1000);
   const [result, setResult] = useState<Result | null>(null);
   const [shareNote, setShareNote] = useState("");
@@ -208,15 +361,15 @@ export function Practice() {
   const run = useRef({
     store: store,
     phase: "ready" as Phase,
-    phrase: null as Phrase | null,
+    prompt: null as Prompt | null,
     typed: "",
     lastKey: 0,
     shownAt: 0,
     pausedAt: 0,
     endAt: 0,
-    queue: [] as Phrase[],
-    shown: [] as Phrase[],
-    next: (() => []) as () => Phrase,
+    queue: [] as Prompt[],
+    shown: [] as Prompt[],
+    next: (() => ({ kind: "type", words: [] })) as () => Prompt,
     digits: 0,
     phrases: 0,
     misses: 0,
@@ -232,13 +385,13 @@ export function Practice() {
     const state = run.current;
     const next = state.queue.shift() ?? state.next();
     state.shown.push(next);
-    state.phrase = next;
+    state.prompt = next;
     state.typed = "";
     state.lastKey = performance.now();
     state.shownAt = state.lastKey;
-    setPhrase(next);
+    setPrompt(next);
     setTyped("");
-    setMissAt(null);
+    setMiss(null);
   }
 
   function start() {
@@ -248,7 +401,7 @@ export function Practice() {
     const seed = challenge ? hashString(challenge.code) : (Math.random() * 2 ** 32) >>> 0;
     Object.assign(state, {
       store: working,
-      queue: challenge ? [...challenge.phrases] : [],
+      queue: challenge ? [...challenge.prompts] : [],
       shown: [],
       next: makeGenerator(seededRandom(seed), level, challenge ? null : working),
       digits: 0,
@@ -293,14 +446,14 @@ export function Practice() {
       hintsOff: before === 0 && state.store.level > 0,
       previousBest,
     });
-    setPhrase(null);
+    setPrompt(null);
     setRunPhase("done");
   }
 
   function abort() {
     run.current.phase = "ready";
     setPhase("ready");
-    setPhrase(null);
+    setPrompt(null);
     setTyped("");
     setRemaining(RUN_SECONDS * 1000);
   }
@@ -317,17 +470,66 @@ export function Practice() {
     showNext();
   }
 
+  // Wrong answer: pause the clock and wait for a tap so you can study the answer.
+  function missed(next: Miss) {
+    const state = run.current;
+    state.phrases += 1;
+    state.misses += 1;
+    state.pausedAt = performance.now();
+    setMiss(next);
+    setStreak(0);
+    setRunPhase("miss");
+  }
+
+  function correct(digitCount: number) {
+    const state = run.current;
+    state.digits += digitCount;
+    state.phrases += 1;
+    setStreak((count) => count + 1);
+    showNext();
+  }
+
+  // "Which word is this number?": choices are picked by position (keys 1-4).
+  function pick(index: number) {
+    const state = run.current;
+    const current = state.prompt;
+    if (state.phase === "miss") {
+      continueAfterMiss();
+      return;
+    }
+    if (state.phase !== "running" || current?.kind !== "pick" || performance.now() - state.shownAt < FRESH_PROMPT_MS) {
+      return;
+    }
+    const picked = current.choices[index];
+    if (!picked) {
+      return;
+    }
+    recordPick(state.store, current.answer, picked);
+    if (picked === current.answer) {
+      correct(current.answer.digits.length);
+    } else {
+      missed({ kind: "pick", picked });
+    }
+  }
+
   function press(digit: string) {
     const state = run.current;
     if (state.phase === "miss") {
       continueAfterMiss();
       return;
     }
-    if (state.phase !== "running" || !state.phrase) {
+    if (state.phase !== "running" || !state.prompt) {
       return;
     }
-    const expected = phraseDigits(state.phrase);
-    const owners = digitOwners(state.phrase);
+    if (state.prompt.kind === "pick") {
+      if (/^[1-4]$/.test(digit)) {
+        pick(Number(digit) - 1);
+      }
+      return;
+    }
+    const phrase = state.prompt.words;
+    const expected = phraseDigits(phrase);
+    const owners = digitOwners(phrase);
     const index = state.typed.length;
     const owner = owners[index]!;
     const now = performance.now();
@@ -344,22 +546,17 @@ export function Practice() {
       state.typed += digit;
       setTyped(state.typed);
       if (state.typed === expected) {
-        state.digits += expected.length;
-        state.phrases += 1;
-        for (const word of state.phrase) {
+        for (const word of phrase) {
           recordWord(state.store, word, null);
         }
-        setStreak((count) => count + 1);
-        showNext();
+        correct(expected.length);
       }
       return;
     }
 
-    // Wrong digit: the prompt is missed. Show the answer, then move on.
-    state.phrases += 1;
-    state.misses += 1;
+    // Wrong digit: the prompt is missed.
     let position = 0;
-    for (const word of state.phrase) {
+    for (const word of phrase) {
       const end = position + word.digits.length;
       if (index >= position && index < end) {
         recordWord(state.store, word, owner.sound);
@@ -368,12 +565,7 @@ export function Practice() {
       }
       position = end;
     }
-    setMissAt(index);
-    setWrongDigit(digit);
-    setStreak(0);
-    // Wrong answer: pause the clock and wait for a tap so you can study the answer.
-    state.pausedAt = now;
-    setRunPhase("miss");
+    missed({ kind: "type", at: index, digit });
   }
 
   // Countdown; it stops while a miss's answer is showing.
@@ -396,7 +588,7 @@ export function Practice() {
     return () => cancelAnimationFrame(frame);
   }, [phase]);
 
-  // Physical keyboard: digits type, Enter or Space starts, Escape stops.
+  // Physical keyboard: digits type (1-4 pick), Enter or Space starts or continues, Escape stops.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) {
@@ -426,8 +618,8 @@ export function Practice() {
     }
     const url = new URL(window.location.href);
     url.search = "";
-    url.hash = `practice?c=${encodePhrases(result.shown)}&s=${result.digits}&l=${result.level}`;
-    const text = `Major System sprint: ${result.digits} digits in ${RUN_SECONDS}s. Same phrases, can you beat it?`;
+    url.hash = `practice?c=${encodePrompts(result.shown)}&s=${result.digits}&l=${result.level}`;
+    const text = `Major System sprint: ${result.digits} digits in ${RUN_SECONDS}s. Same rounds, can you beat it?`;
     try {
       if (navigator.share) {
         await navigator.share({ text, url: url.toString() });
@@ -440,9 +632,13 @@ export function Practice() {
     }
   }
 
+  const phrase = prompt?.kind === "type" ? prompt.words : null;
   const expected = phrase ? phraseDigits(phrase) : "";
+  const done = phrase ? soundsDone(phrase, typed.length) : [];
+  const currentWord = phrase ? (positions(phrase)[typed.length]?.wordIndex ?? -1) : -1;
   const seconds = Math.ceil(remaining / 1000);
   const active = phase === "running" || phase === "miss";
+  const picking = active && prompt?.kind === "pick";
 
   return (
     <main className="page practice">
@@ -470,24 +666,40 @@ export function Practice() {
             Start
             <span className="start-detail">
               {challenge
-                ? `Same phrases as a friend who got ${challenge.score} digits`
-                : `${RUN_SECONDS} seconds · type each phrase's number`}
+                ? `Same rounds as a friend who got ${challenge.score} digits`
+                : `${RUN_SECONDS} seconds · type each word's number, or pick the word for a number`}
             </span>
           </button>
         ) : null}
 
         {phase === "running" && phrase ? (
           <p className={streak > 0 ? "phrase-text pop" : "phrase-text"} data-testid="phrase-text" key={run.current.shown.length}>
-            {phrase.map((entry) => entry.word).join(" ")}
+            {phrase.map((entry, index) => (
+              <LitWord current={phrase.length > 1 && index === currentWord} done={done[index]!} entry={entry} key={index} />
+            ))}
           </p>
         ) : null}
 
-        {phase === "miss" && phrase ? (
+        {phase === "running" && prompt?.kind === "pick" ? (
+          <div className="pick-prompt pop" data-testid="pick-prompt" key={run.current.shown.length}>
+            <span className="pick-number">{prompt.answer.digits}</span>
+            <span className="pick-question">which word is this?</span>
+          </div>
+        ) : null}
+
+        {phase === "miss" && phrase && miss?.kind === "type" ? (
           <div className="miss-view" data-testid="miss">
-            <Breakdown missAt={missAt} phrase={phrase} />
+            <Breakdown missAt={miss.at} phrase={phrase} />
             <p className="miss-note">
-              you typed {wrongDigit}, it's {missAt !== null ? expected[missAt] : ""} · clock paused, tap to go on
+              you typed {miss.digit}, it's {expected[miss.at]} · clock paused, tap to go on
             </p>
+          </div>
+        ) : null}
+
+        {phase === "miss" && prompt?.kind === "pick" && miss?.kind === "pick" ? (
+          <div className="miss-view" data-testid="miss">
+            <PickReview picked={miss.picked} prompt={prompt} />
+            <p className="miss-note">{prompt.answer.digits} is {prompt.answer.word} · clock paused, tap to go on</p>
           </div>
         ) : null}
 
@@ -527,20 +739,25 @@ export function Practice() {
       </div>
 
       <p className="typed" data-testid="typed" aria-label="Typed digits">
-        {/* Only what you've typed: placeholders would give away the answer's length. */}
-        {active && phrase && (typed || phase === "miss")
-          ? (phase === "miss" ? expected : typed).split("").map((digit, index) => (
-              <span
-                className={index < typed.length ? "slot done" : phase === "miss" && index === missAt ? "slot wrong" : "slot"}
-                key={index}
-              >
-                {digit}
-              </span>
-            ))
-          : " "}
+        {/* Only what you've typed, grouped by word and sound. */}
+        {active && phrase && (typed || miss?.kind === "type") ? (
+          <TypedDigits missAt={miss?.kind === "type" ? miss.at : null} phrase={phrase} shown={phase === "miss" ? expected : typed} />
+        ) : (
+          "\u00a0"
+        )}
       </p>
 
-      <Keypad hints={store.level === 0} onDigit={press} />
+      {/* Same footprint either way, so nothing below moves. */}
+      {picking && prompt?.kind === "pick" ? (
+        <Choices
+          answer={phase === "miss" ? prompt.answer : undefined}
+          choices={prompt.choices}
+          picked={phase === "miss" && miss?.kind === "pick" ? miss.picked : undefined}
+          onPick={pick}
+        />
+      ) : (
+        <Keypad hints={store.level === 0} onDigit={press} />
+      )}
 
       {phase === "ready" || phase === "done" ? (
         <>

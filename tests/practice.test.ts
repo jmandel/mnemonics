@@ -3,11 +3,14 @@ import { expect, test } from "bun:test";
 import { digitsOfWord, exampleWord } from "../src/engine";
 import {
   buildRules,
-  decodePhrases,
+  decodePrompts,
   digitOwners,
   examples,
   emptyStore,
-  encodePhrases,
+  encodePrompts,
+  makeChoices,
+  recordPick,
+  type Prompt,
   findWord,
   makeGenerator,
   phraseDigits,
@@ -61,21 +64,32 @@ test("practice words carry sounds that spell their digits", () => {
   }
 });
 
-test("the same seed makes the same phrases, and shared runs round-trip", () => {
+const typed = (prompt: Prompt) => (prompt.kind === "type" ? prompt.words : [prompt.answer]);
+
+test("the same seed makes the same rounds, and shared runs round-trip", () => {
   const first = makeGenerator(seededRandom(42), 3, null);
   const second = makeGenerator(seededRandom(42), 3, null);
-  const phrases = Array.from({ length: 10 }, first);
-  expect(Array.from({ length: 10 }, second)).toEqual(phrases);
-  expect(decodePhrases(encodePhrases(phrases))).toEqual(phrases);
-  for (const phrase of phrases) {
-    expect(phrase.length).toBeGreaterThanOrEqual(2);
-    expect(digitOwners(phrase).length).toBe(phraseDigits(phrase).length);
+  const prompts = Array.from({ length: 40 }, first);
+  expect(Array.from({ length: 40 }, second)).toEqual(prompts);
+  expect(decodePrompts(encodePrompts(prompts))).toEqual(prompts);
+  const kinds = new Set(prompts.map((prompt) => prompt.kind));
+  expect(kinds).toEqual(new Set(["type", "pick"]));
+  for (const prompt of prompts) {
+    if (prompt.kind === "type") {
+      expect(prompt.words.length).toBeGreaterThanOrEqual(2);
+      expect(digitOwners(prompt.words).length).toBe(phraseDigits(prompt.words).length);
+    } else {
+      expect(prompt.choices).toContain(prompt.answer);
+      expect(new Set(prompt.choices.map((entry) => entry.digits)).size).toBe(4);
+    }
   }
 });
 
 test("top-level prompts are long numbers", () => {
   const next = makeGenerator(seededRandom(3), 3, null);
-  const lengths = Array.from({ length: 200 }, () => phraseDigits(next()).length);
+  const lengths = Array.from({ length: 200 }, next)
+    .filter((prompt) => prompt.kind === "type")
+    .map((prompt) => phraseDigits(typed(prompt)).length);
   expect(Math.max(...lengths)).toBeGreaterThanOrEqual(12);
   expect(lengths.reduce((sum, length) => sum + length, 0) / lengths.length).toBeGreaterThan(7);
 });
@@ -83,10 +97,34 @@ test("top-level prompts are long numbers", () => {
 test("level 0 prompts are single short words", () => {
   const next = makeGenerator(seededRandom(7), 0, emptyStore());
   for (let index = 0; index < 50; index += 1) {
-    const phrase = next();
-    expect(phrase.length).toBe(1);
-    expect(phrase[0]!.digits.length).toBeLessThanOrEqual(3);
+    const words = typed(next());
+    expect(words.length).toBe(1);
+    expect(words[0]!.digits.length).toBeLessThanOrEqual(3);
   }
+});
+
+test("pick rounds offer a letter-reading trap and near misses", () => {
+  // "comb" reads as 739 letter by letter, but the b is silent: 73.
+  const camp = findWord("camp")!;
+  expect(camp.digits).toBe("739");
+  const choices = makeChoices(camp, seededRandom(1)).map((entry) => entry.word);
+  expect(choices).toContain("camp");
+  expect(choices).toContain("comb");
+  expect(choices.length).toBe(4);
+});
+
+test("letter alignment marks which letters make each sound", () => {
+  // comb: the b is silent; castle: the t is silent.
+  expect(findWord("comb")?.align).toBe("0-1-");
+  expect(findWord("castle")?.align).toBe("0-1-22");
+});
+
+test("a wrong pick is charged to the sound that differs", () => {
+  const store = emptyStore();
+  const camp = findWord("camp")!;
+  recordPick(store, camp, findWord("comb")!);
+  expect(store.skills.p?.missed).toBe(1);
+  expect(store.skills.k?.missed).toBe(0);
 });
 
 test("a missed word gets a card and comes back; misses are credited to the sound", () => {

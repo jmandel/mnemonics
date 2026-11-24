@@ -1,8 +1,9 @@
 import rawPractice from "../../practice.json";
 
-// Built by scripts/build_words.py: words are [word, "f8 sh6 ng27", "tag,tag", zipf*10];
-// examples maps 0-99 to the About page's example word.
-type RawPracticeWord = [string, string, string, number];
+// Built by scripts/build_words.py: words are [word, "f8 sh6 ng27", "tag,tag", zipf*10,
+// letter alignment]; examples maps 0-99 to the About page's example word; traps maps a
+// number to words that look like it letter by letter but aren't.
+type RawPracticeWord = [string, string, string, number, string];
 // rules: the tier thresholds the build used, plus tier sizes, for the About page.
 export type BuildRules = {
   commonKnown: number;
@@ -23,6 +24,7 @@ const raw = rawPractice as unknown as {
   words: RawPracticeWord[];
   examples: Record<string, string>;
   rules: BuildRules;
+  traps: Record<string, string[]>;
 };
 
 export const examples = raw.examples;
@@ -37,10 +39,17 @@ export type PracticeWord = {
   tags: string[];
   // wordfreq Zipf: 4+ is an everyday word.
   zipf: number;
+  // One character per letter: index of the sound it spells, or "-" (vowel or silent).
+  align: string;
 };
 
-// One prompt: a few words whose digits are typed in order.
+// Words whose digits are typed in order.
 export type Phrase = PracticeWord[];
+
+// A round: type the number for some words, or pick which word is a number.
+export type Prompt =
+  | { kind: "type"; words: Phrase }
+  | { kind: "pick"; answer: PracticeWord; choices: PracticeWord[] };
 
 export type SkillStat = {
   seen: number;
@@ -71,13 +80,14 @@ export type Store = {
 };
 
 export const RUN_SECONDS = 60;
+const PICK_SHARE = 0.25;
 const STORAGE_KEY = "mnemonics.practice.v1";
 const DAY = 24 * 60 * 60 * 1000;
 // Days until a learned word comes back, by Leitner box.
 const BOX_DAYS = [0, 1, 3, 7, 21];
 
 export const words: PracticeWord[] = raw.words.map(
-  ([word, sounds, tags, zipf]) => {
+  ([word, sounds, tags, zipf, align]) => {
     const parsed = sounds.split(" ").map((token) => {
       const match = token.match(/^([a-z]+)(\d+)$/)!;
       return { label: match[1]!, digits: match[2]! };
@@ -88,11 +98,71 @@ export const words: PracticeWord[] = raw.words.map(
       digits: parsed.map((sound) => sound.digits).join(""),
       tags: tags ? tags.split(",") : [],
       zipf: zipf / 10,
+      align,
     };
   },
 );
 
 const byWord = new Map(words.map((entry) => [entry.word, entry]));
+
+const byDigits = new Map<string, PracticeWord[]>();
+for (const entry of words) {
+  byDigits.set(entry.digits, [...(byDigits.get(entry.digits) ?? []), entry]);
+}
+
+// Sounds people mix up, as digit swaps: s/sh, ch as in chin or chorus, n/m, r/l, f/p, t/ch.
+const CONFUSABLE: Array<[string, string]> = [["0", "6"], ["6", "7"], ["2", "3"], ["4", "5"], ["8", "9"], ["1", "6"]];
+
+// Numbers one slip away: a confusable swap, a dropped digit, or a doubled one.
+function nearMisses(digits: string) {
+  const out = new Set<string>();
+  for (let index = 0; index < digits.length; index += 1) {
+    const digit = digits[index]!;
+    for (const [left, right] of CONFUSABLE) {
+      const other = digit === left ? right : digit === right ? left : null;
+      if (other) {
+        out.add(digits.slice(0, index) + other + digits.slice(index + 1));
+      }
+    }
+    if (digits.length > 1) {
+      out.add(digits.slice(0, index) + digits.slice(index + 1));
+    }
+    out.add(digits.slice(0, index + 1) + digit + digits.slice(index + 1));
+  }
+  out.delete(digits);
+  return [...out];
+}
+
+// Four words for "which is this number?": the answer, a letter-reading trap when one
+// exists ("comb" for 739), near misses, then any word of similar length.
+export function makeChoices(answer: PracticeWord, random: () => number): PracticeWord[] {
+  // Every choice has a different number, so the review shows four distinct readings.
+  const used = new Set<string>([answer.digits]);
+  const picks: PracticeWord[] = [];
+  const take = (entry: PracticeWord | undefined) => {
+    if (entry && !used.has(entry.digits) && picks.length < 3) {
+      used.add(entry.digits);
+      picks.push(entry);
+    }
+  };
+  const traps = (raw.traps[answer.digits] ?? []).map((word) => byWord.get(word));
+  take(traps.length ? traps[Math.floor(random() * traps.length)] : undefined);
+  const near = nearMisses(answer.digits).filter((digits) => byDigits.has(digits));
+  for (let tries = 0; tries < 12 && picks.length < 3 && near.length; tries += 1) {
+    const options = byDigits.get(near[Math.floor(random() * near.length)]!)!;
+    take(options[Math.floor(random() * options.length)]);
+  }
+  const similar = words.filter((entry) => Math.abs(entry.digits.length - answer.digits.length) <= 1);
+  while (picks.length < 3) {
+    take(similar[Math.floor(random() * similar.length)]);
+  }
+  const all = [answer, ...picks];
+  for (let index = all.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(random() * (index + 1));
+    [all[index], all[swap]] = [all[swap]!, all[index]!];
+  }
+  return all;
+}
 
 export function findWord(word: string) {
   return byWord.get(word);
@@ -271,10 +341,15 @@ export function makeGenerator(random: () => number, level: number, store: Store 
     return pick(pool, random);
   }
 
-  return (): Phrase => {
+  // About one round in four asks the other way round: which word is this number?
+  return (): Prompt => {
+    if (random() < PICK_SHARE) {
+      const answer = nextWord();
+      return { kind: "pick", answer, choices: makeChoices(answer, random) };
+    }
     const [low, high] = shape.words;
     const count = low! + Math.floor(random() * (high! - low! + 1));
-    return Array.from({ length: count }, nextWord);
+    return { kind: "type", words: Array.from({ length: count }, nextWord) };
   };
 }
 
@@ -341,6 +416,21 @@ export function recordWord(store: Store, word: PracticeWord, missedSound: Sound 
   }
 }
 
+// A "which word is this number?" round. A wrong pick is charged to the answer's sound
+// where the chosen word's number first differs.
+export function recordPick(store: Store, answer: PracticeWord, picked: PracticeWord) {
+  if (picked.word === answer.word) {
+    recordWord(store, answer, null);
+    return;
+  }
+  let index = 0;
+  while (index < answer.digits.length && answer.digits[index] === picked.digits[index]) {
+    index += 1;
+  }
+  const owners = digitOwners([answer]);
+  recordWord(store, answer, (owners[Math.min(index, owners.length - 1)] ?? owners[0]!).sound);
+}
+
 // After a run: move up when fast and accurate (two steps when very fast), down when struggling.
 export function nextLevel(level: number, run: Run) {
   const accuracy = run.phrases ? (run.phrases - run.misses) / run.phrases : 0;
@@ -354,22 +444,43 @@ export function nextLevel(level: number, run: Run) {
   return level;
 }
 
-// Shared runs travel in the URL as "turtle.pendulum-wolf", base64url-encoded so the
-// link doesn't spoil the words.
-export function encodePhrases(phrases: Phrase[]) {
-  const plain = phrases.map((phrase) => phrase.map((entry) => entry.word).join(".")).join("-");
+// Shared runs travel in the URL as "turtle.pendulum-!2:comb.camp.cup.cap" (a "!" round is
+// "which word is this number?", with the answer's position and the choices in order),
+// base64url-encoded so the link doesn't spoil the words.
+export function encodePrompts(prompts: Prompt[]) {
+  const plain = prompts
+    .map((prompt) =>
+      prompt.kind === "type"
+        ? prompt.words.map((entry) => entry.word).join(".")
+        : `!${prompt.choices.indexOf(prompt.answer)}:${prompt.choices.map((entry) => entry.word).join(".")}`,
+    )
+    .join("-");
   return btoa(plain).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export function decodePhrases(text: string): Phrase[] {
+export function decodePrompts(text: string): Prompt[] {
   let plain = "";
   try {
     plain = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
   } catch {
     return [];
   }
-  return plain
-    .split("-")
-    .map((part) => part.split(".").map((word) => byWord.get(word)).filter((entry): entry is PracticeWord => !!entry))
-    .filter((phrase) => phrase.length > 0);
+  const prompts: Prompt[] = [];
+  for (const part of plain.split("-")) {
+    const pick = part.match(/^!(\d):(.+)$/);
+    const listed = (pick ? pick[2]! : part).split(".").map((word) => byWord.get(word));
+    if (listed.some((entry) => !entry) || listed.length === 0) {
+      continue;
+    }
+    const entries = listed as PracticeWord[];
+    if (pick) {
+      const answer = entries[Number(pick[1])];
+      if (answer) {
+        prompts.push({ kind: "pick", answer, choices: entries });
+      }
+    } else {
+      prompts.push({ kind: "type", words: entries });
+    }
+  }
+  return prompts;
 }
